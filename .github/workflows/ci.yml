@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.9", "3.13"]
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: macos-latest
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # pytest and nothing else. An interpreter with no numeric stack on it is
+      # what proves the zero-dependency claim, and the suite never touches the
+      # network, so it is fast and cannot go red because a service is down.
+      - run: python -m pip install pytest
+      - name: Test
+        run: python -m pytest
+        env:
+          PYTHONPATH: src
+
+  accuracy:
+    name: Finds what was planted
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The unit tests prove the statistics; this proves the whole pipeline
+      # end to end on a set with known defects. docs/example-results.csv has
+      # ten items graded against a deliberately wrong answer, planted at
+      # item-056 to item-065.
+      - name: Every planted broken item is named, and no others
+        run: |
+          set -euo pipefail
+          python -m evalint docs/example-results.csv --json > audit.json
+          named=$(python -c "import json;print(' '.join(sorted(b['id'] for b in json.load(open('audit.json'))['broken'])))")
+          expected=$(python -c "print(' '.join('item-%03d' % n for n in range(56, 66)))")
+          echo "named:    $named"
+          echo "expected: $expected"
+          test "$named" = "$expected"
+        env:
+          PYTHONPATH: src
+
+      - name: The reduced set really does reproduce the ranking
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          audit = json.load(open("audit.json"))
+          reduction = audit["reduction"]
+          assert reduction["ranking_preserved"], reduction
+          assert reduction["tau"] == 1.0, reduction
+          assert reduction["saving"] > 0.2, reduction
+          print(f"kept {reduction['kept']}/{reduction['original_items']}, "
+                f"saving {reduction['saving']:.0%}, tau {reduction['tau']}")
+          PY
+
+      - name: A file with one system is refused, not silently reported as clean
+        run: |
+          set +e
+          printf 'item_id,system,score\na,solo,1\nb,solo,0\n' > solo.csv
+          python -m evalint solo.csv 2>/dev/null
+          code=$?
+          set -e
+          test "$code" = "1" || { echo "expected exit 1, got $code"; exit 1; }
+        env:
+          PYTHONPATH: src
+
+      - name: A CI gate below the set's reliability fails the build
+        run: |
+          set +e
+          python -m evalint docs/example-results.csv --fail-under 0.99 >/dev/null
+          code=$?
+          set -e
+          test "$code" = "2" || { echo "expected exit 2, got $code"; exit 1; }
+        env:
+          PYTHONPATH: src
+
+  readme:
+    name: README is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install pillow
+      - run: python docs/build_docs.py --check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install ruff
+      - run: ruff check src tests docs
+      - run: ruff format --check src tests docs
+
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
