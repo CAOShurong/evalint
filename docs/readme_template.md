@@ -2,6 +2,11 @@
 
 **Audit an LLM eval set the way you would audit an exam.**
 
+[![CI](https://github.com/CAOShurong/evalint/actions/workflows/ci.yml/badge.svg)](https://github.com/CAOShurong/evalint/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/evalint.svg)](https://pypi.org/project/evalint/)
+[![Python](https://img.shields.io/pypi/pyversions/evalint.svg)](https://pypi.org/project/evalint/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Every eval framework runs your test cases. None of them ask whether the test
 cases are any good.
 
