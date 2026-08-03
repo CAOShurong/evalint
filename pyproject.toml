@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "evalint"
+version = "0.1.0"
+description = "Audit an LLM eval set the way you would audit an exam: what it can measure, what is dead weight, and which items are broken."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Shurong Cao", email = "shurongcao2026@gmail.com" }]
+keywords = [
+    "llm",
+    "evaluation",
+    "evals",
+    "benchmark",
+    "psychometrics",
+    "item-analysis",
+    "reliability",
+    "test-quality",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+# No runtime dependencies, on purpose. This is a tool people reach for when
+# they already distrust their eval numbers; asking them to install a numeric
+# stack first is how it stays uninstalled.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/CAOShurong/evalint"
+Repository = "https://github.com/CAOShurong/evalint"
+Issues = "https://github.com/CAOShurong/evalint/issues"
+Changelog = "https://github.com/CAOShurong/evalint/blob/main/CHANGELOG.md"
+
+[project.scripts]
+evalint = "evalint.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evalint"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "docs", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+ignore = [
+    # The report builds strings by concatenation so each fragment can carry
+    # its own colour role; f-strings would not read better here.
+    "ISC001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests state matrices as literal grids, and the width is the point.
+"tests/*" = ["E501"]
