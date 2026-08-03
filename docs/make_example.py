@@ -146,8 +146,14 @@ def build() -> list[dict]:
 def main() -> int:
     rows = build()
     with open(OUT, "w", encoding="utf-8", newline="") as handle:
+        # LF, not the csv module's default CRLF. The file is checked in and a
+        # test regenerates it and compares bytes; with CRLF, git normalises
+        # the committed copy to LF and that test can only ever pass on
+        # Windows, where the checkout converts it back.
         writer = csv.DictWriter(
-            handle, fieldnames=["item_id", "text", "system", "score"]
+            handle,
+            fieldnames=["item_id", "text", "system", "score"],
+            lineterminator="\n",
         )
         writer.writeheader()
         writer.writerows(rows)
