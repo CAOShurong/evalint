@@ -186,6 +186,43 @@ def test_detects_promptfoo_by_its_results_key():
     assert detect_format('{"results": [], "version": 3}') == "promptfoo"
 
 
+def _current_promptfoo_jsonl() -> str:
+    records = []
+    for test_idx, case in enumerate(("q1", "q2")):
+        for prompt_idx, (provider, score) in enumerate(
+            (("openai:gpt-4o", 1), ("anthropic:claude", 0))
+        ):
+            records.append(
+                {
+                    "id": f"result-{test_idx}-{prompt_idx}",
+                    "testIdx": test_idx,
+                    "promptIdx": prompt_idx,
+                    "testCase": {"vars": {"case": case}},
+                    "provider": {"id": provider, "label": provider},
+                    "prompt": {"raw": "Answer {{case}}"},
+                    "success": bool(score),
+                    "score": score,
+                    "latencyMs": 10,
+                    "namedScores": {},
+                    "failureReason": 0 if score else 1,
+                }
+            )
+    return "\n".join(json.dumps(record) for record in records) + "\n"
+
+
+def test_detects_current_promptfoo_jsonl_results():
+    assert detect_format(_current_promptfoo_jsonl()) == "promptfoo"
+
+
+def test_promptfoo_jsonl_does_not_capture_generic_records_with_index_metadata():
+    text = (
+        '{"item":"q1","system":"alpha","score":1,"testIdx":0,"promptIdx":0}\n'
+        '{"item":"q1","system":"beta","score":0,"testIdx":0,"promptIdx":1}\n'
+    )
+
+    assert detect_format(text) == "jsonl"
+
+
 def test_detects_openai_evals_by_its_spec_line():
     """The file starts with `{`, so the whole-file JSON branch sees it first.
 
@@ -982,6 +1019,95 @@ def test_promptfoo_preserves_a_provider_with_no_usable_scores():
     assert fmt == "promptfoo"
     assert matrix.systems == ["alpha", "silent-provider"]
     assert matrix.scores_for_system("silent-provider") == {}
+
+
+def test_current_promptfoo_jsonl_output_is_read_automatically_and_when_forced():
+    for requested_format in ("auto", "promptfoo"):
+        matrix, fmt = load_text(_current_promptfoo_jsonl(), requested_format)
+
+        assert fmt == "promptfoo"
+        assert matrix.item_ids == ['{"case": "q1"}', '{"case": "q2"}']
+        assert matrix.systems == ["openai:gpt-4o", "anthropic:claude"]
+        assert matrix.observations == 4
+        assert matrix.score('{"case": "q1"}', "openai:gpt-4o") == 1
+        assert matrix.score('{"case": "q1"}', "anthropic:claude") == 0
+
+
+def test_current_promptfoo_v3_json_results_remain_supported():
+    payload = {
+        "version": 3,
+        "timestamp": "2026-08-12T00:00:00Z",
+        "results": [
+            json.loads(line) for line in _current_promptfoo_jsonl().splitlines()
+        ],
+        "prompts": [],
+        "stats": {},
+    }
+
+    matrix, fmt = load_text(json.dumps(payload))
+
+    assert fmt == "promptfoo"
+    assert matrix.observations == 4
+
+
+def test_promptfoo_jsonl_uses_test_index_when_memory_projections_strip_identity_text():
+    records = []
+    for test_idx in range(2):
+        for prompt_idx, provider in enumerate(("alpha", "beta")):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": prompt_idx,
+                    "testCase": {},
+                    "provider": {"id": provider},
+                    "prompt": {},
+                    "success": True,
+                    "score": 1,
+                }
+            )
+    text = "\n".join(json.dumps(record) for record in records)
+
+    matrix, fmt = load_text(text)
+
+    assert fmt == "promptfoo"
+    assert matrix.item_ids == ["promptfoo:test:0", "promptfoo:test:1"]
+    assert matrix.observations == 4
+
+
+def test_malformed_promptfoo_jsonl_fails_at_the_physical_line():
+    lines = _current_promptfoo_jsonl().splitlines()
+    lines[1] = '{"testIdx":0,"promptIdx":1,"provider":'
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text("\n".join(lines))
+
+    message = str(caught.value)
+    assert "Promptfoo JSONL" in message
+    assert "line 2" in message
+    assert "column" in message
+
+
+def test_promptfoo_jsonl_rejects_duplicate_members_at_the_physical_line():
+    lines = _current_promptfoo_jsonl().splitlines()
+    lines[0] = lines[0].replace('"score": 1', '"score": 0, "score": 1')
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text("\n".join(lines))
+
+    message = str(caught.value)
+    assert "Promptfoo JSONL" in message
+    assert "line 1" in message
+    assert "duplicate object member" in message
+
+
+def test_promptfoo_jsonl_rejects_a_non_result_row_instead_of_returning_a_subset():
+    lines = _current_promptfoo_jsonl().splitlines()
+    lines[1] = '{"metadata":{"batch":"checkpoint"}}'
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text("\n".join(lines))
+
+    assert "Promptfoo JSONL line 2 is not an eval result" in str(caught.value)
 
 
 def test_openai_evals_keeps_a_sample_when_the_grader_emits_no_score():

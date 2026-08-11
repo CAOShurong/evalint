@@ -20,8 +20,8 @@ which of them are scored against an answer that is simply wrong.
 <!--SHOT_REPORT-->
 
 Nothing to instrument, nothing to install alongside it, no API key, no model.
-It reads a CSV, a JSONL, a promptfoo dump or an OpenAI evals log, and it has
-zero runtime dependencies.
+It reads a CSV, generic JSONL, a promptfoo JSON/JSONL dump or an OpenAI evals
+log, and it has zero runtime dependencies.
 
 ---
 
@@ -97,7 +97,7 @@ space writes `.json` and none of it is labelled.
 | A CSV: `item_id, system, score` | `evalint results.csv` |
 | A wide CSV: one column per model | `evalint results.csv` |
 | JSONL records | `evalint results.jsonl` |
-| promptfoo's `--output` JSON | `evalint promptfoo.json` |
+| promptfoo's `--output` JSON or JSONL | `evalint promptfoo.jsonl` |
 | OpenAI evals logs (one run each) | `evalint gpt-4o.jsonl claude.jsonl` |
 | One file per model | `evalint *.csv` |
 
@@ -144,10 +144,15 @@ the audit exits `1` and names it instead of silently dropping it or ranking it
 as zero. This warning does not impute data or make an incomplete comparison
 valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
 
-Every nonblank JSONL and OpenAI Evals line must be complete JSON. A malformed
+Every nonblank generic, Promptfoo, and OpenAI Evals JSONL line must be complete
+JSON. A malformed
 record exits `1` with its line and column instead of being skipped or leaking a
 Python traceback. EvalInt never repairs a partial score record and then reports
-on the survivors; see [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
+on the survivors. Promptfoo JSONL is detected from its current per-result shape;
+when its memory-saving projections remove both variables and prompt text,
+EvalInt uses the export-local `testIdx` as the item identity. See
+[`docs/PROMPTFOO_JSONL.md`](docs/PROMPTFOO_JSONL.md) and
+[`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
 
 JSON that exceeds Python's safe nesting boundary exits `1` with a bounded
 message and no traceback across automatic detection and every JSON reader.

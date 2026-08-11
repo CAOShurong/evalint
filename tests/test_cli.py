@@ -61,6 +61,24 @@ def _deep_json(depth: int = 12_000) -> str:
     )
 
 
+def _promptfoo_jsonl() -> str:
+    records = []
+    for test_idx in range(2):
+        for prompt_idx, provider in enumerate(("alpha", "beta")):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": prompt_idx,
+                    "testCase": {"vars": {"case": f"q{test_idx + 1}"}},
+                    "provider": {"id": provider},
+                    "prompt": {"raw": "Answer {{case}}"},
+                    "success": provider == "alpha",
+                    "score": 1 if provider == "alpha" else 0,
+                }
+            )
+    return "\n".join(json.dumps(record) for record in records) + "\n"
+
+
 def test_a_healthy_file_exits_zero(tmp_path, capsys):
     assert main([str(_write(tmp_path, HEALTHY))]) == 0
     assert "evalint" in capsys.readouterr().out
@@ -107,6 +125,30 @@ def test_late_malformed_jsonl_exits_one_without_a_traceback(tmp_path, capsys):
     assert "JSONL" in captured.err
     assert "line 6" in captured.err
     assert "column" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_promptfoo_jsonl_runs_through_the_real_cli_entry_point(tmp_path, capsys):
+    path = _write(tmp_path, _promptfoo_jsonl(), "promptfoo.jsonl")
+
+    assert main([str(path), "--json"]) == 0
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["format"] == "promptfoo"
+    assert report["summary"]["items"] == 2
+    assert captured.err == ""
+
+
+def test_malformed_promptfoo_jsonl_exits_one_without_a_subset_report(tmp_path, capsys):
+    lines = _promptfoo_jsonl().splitlines()
+    lines[1] = '{"testIdx":0,"promptIdx":1,"provider":'
+    path = _write(tmp_path, "\n".join(lines), "truncated-promptfoo.jsonl")
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Promptfoo JSONL" in captured.err
+    assert "line 2" in captured.err
     assert "Traceback" not in captured.err
 
 

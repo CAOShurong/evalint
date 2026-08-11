@@ -2,7 +2,7 @@
 
 Nobody re-instruments a pipeline to try a tool. Whatever eval framework is
 already in use has already written a file, and this reads it: promptfoo's
-JSON, OpenAI evals' JSONL, a long or wide CSV, or a JSONL of records.
+JSON or JSONL, OpenAI evals' JSONL, a long or wide CSV, or generic JSONL.
 
 Detection is by shape rather than by filename, because everything in this
 space writes `.json` and `.jsonl` and none of it is labelled. Each reader
@@ -173,6 +173,24 @@ def _required_identifier(
     return identifier
 
 
+def _is_promptfoo_result(value: object) -> bool:
+    """Recognise the current per-result shape without capturing generic JSONL."""
+    if not isinstance(value, dict):
+        return False
+    test_idx = value.get("testIdx")
+    prompt_idx = value.get("promptIdx")
+    return (
+        isinstance(test_idx, int)
+        and not isinstance(test_idx, bool)
+        and isinstance(prompt_idx, int)
+        and not isinstance(prompt_idx, bool)
+        and "testCase" in value
+        and "provider" in value
+        and "success" in value
+        and "score" in value
+    )
+
+
 def detect_format(text: str) -> str:
     """Name the shape of a results file: ``promptfoo``, ``openai-evals``,
     ``matrix``, ``jsonl``, ``csv``, or ``unknown``."""
@@ -192,6 +210,8 @@ def detect_format(text: str) -> str:
         if isinstance(data, dict):
             if data.get("schema") == NATIVE_SCHEMA:
                 return "matrix"
+            if _is_promptfoo_result(data):
+                return "promptfoo"
             if "results" in data and isinstance(data.get("results"), (dict, list)):
                 return "promptfoo"
         if isinstance(data, list) and data and isinstance(data[0], dict):
@@ -207,15 +227,20 @@ def detect_format(text: str) -> str:
 
 
 def _jsonl_kind(text: str) -> str:
-    """Tell an OpenAI evals event stream from ordinary JSONL records."""
-    if not _looks_like_jsonl(text):
-        return "unknown"
+    """Tell Promptfoo and OpenAI event streams from ordinary JSONL records."""
     for line in text.splitlines():
         if not line.strip():
             continue
         try:
             first = _detection_json_loads(line)
         except ValueError:
+            return "unknown"
+        # A current Promptfoo JSONL row has producer-specific structural keys.
+        # Identify it from the first complete row so a later truncated row is
+        # still routed to the reader that can name its physical line.
+        if _is_promptfoo_result(first):
+            return "promptfoo"
+        if not _looks_like_jsonl(text):
             return "unknown"
         if not isinstance(first, dict):
             return "jsonl"
@@ -613,17 +638,58 @@ def _set_flattened_field(out: dict, recognized: dict, name: str, value) -> None:
     out[name] = value
 
 
+def _starts_with_promptfoo_jsonl_result(text: str) -> bool:
+    """Whether the first physical record is a current Promptfoo result."""
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            return _is_promptfoo_result(_detection_json_loads(line))
+        except ValueError:
+            return False
+    return False
+
+
 def _read_promptfoo(text: str) -> Matrix:
-    """promptfoo's eval JSON: results, each with a provider and a test case."""
-    data = _json_document(text, "Promptfoo")
-    if not isinstance(data, dict):
-        raise ImportError_("invalid Promptfoo JSON: the root must be an object")
-    results = data.get("results")
-    if isinstance(results, dict):
-        results = results.get("results", [])
+    """Promptfoo eval JSON envelopes and current per-result JSONL exports."""
+    locations: list[str] | None = None
+    if _starts_with_promptfoo_jsonl_result(text):
+        results = []
+        locations = []
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
+            entry = _json_line(line, line_number, "Promptfoo JSONL")
+            location = f"Promptfoo JSONL line {line_number}"
+            if not _is_promptfoo_result(entry):
+                raise ImportError_(f"{location} is not an eval result")
+            results.append(entry)
+            locations.append(location)
+    else:
+        data = _json_document(text, "Promptfoo")
+        if not isinstance(data, dict):
+            raise ImportError_("invalid Promptfoo JSON: the root must be an object")
+        if _is_promptfoo_result(data):
+            results = [data]
+        else:
+            results = data.get("results")
+            if isinstance(results, dict):
+                results = results.get("results", [])
+            if not isinstance(results, list):
+                raise ImportError_(
+                    "invalid Promptfoo JSON: results must be an array of eval results"
+                )
+
     matrix = Matrix()
-    for entry in results or []:
+    for entry_number, entry in enumerate(results, start=1):
+        location = (
+            locations[entry_number - 1]
+            if locations is not None
+            else f"Promptfoo result {entry_number}"
+        )
         if not isinstance(entry, dict):
+            if locations is not None:
+                raise ImportError_(f"{location} is not an eval result")
             continue
         provider = entry.get("provider")
         system = (
@@ -644,7 +710,14 @@ def _read_promptfoo(text: str) -> Matrix:
             if isinstance(prompt, dict):
                 prompt_text = str(prompt.get("raw") or prompt.get("label") or "")
             item_id = prompt_text
+        if not item_id:
+            test_idx = entry.get("testIdx")
+            if isinstance(test_idx, int) and not isinstance(test_idx, bool):
+                item_id = f"promptfoo:test:{test_idx}"
         if not system or not item_id:
+            if locations is not None:
+                missing = "provider" if not system else "test identity"
+                raise ImportError_(f"{location} has no usable {missing}")
             continue
         matrix.add_item(Item(id=str(item_id), text=prompt_text))
         matrix.add_system(str(system))

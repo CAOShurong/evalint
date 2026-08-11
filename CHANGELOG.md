@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.25] - 2026-08-12
+
+### Added
+
+- Read Promptfoo's current per-result JSONL export automatically or through
+  `--format promptfoo`, while preserving the existing v3 JSON-envelope reader.
+- Retain test identity through Promptfoo's documented memory-saving strip
+  options by falling back to `testIdx` when both variables and prompt text are
+  absent.
+
+### Fixed
+
+- Route malformed Promptfoo JSONL to bounded physical-line errors rather than
+  generic nested-field conflicts, an unknown-format error, or a partial audit.
+- Reject non-result rows and duplicate object members before producing a
+  plausible report from only the remaining JSONL records.
+
 ## [0.2.24] - 2026-08-12
 
 ### Fixed
