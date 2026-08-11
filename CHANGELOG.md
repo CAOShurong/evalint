@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-08-12
+
+### Fixed
+
+- Refuse plain `--save-reduced` output when a kept item id contains a line
+  boundary. Earlier releases silently split one logical id across physical
+  lines; a reproduced report kept 3 ids while its output contained 6 lines.
+- Validate the complete plain serialization before creating a temporary file,
+  so a refused write preserves an existing destination.
+
+### Added
+
+- Add `--save-reduced-format jsonl` for lossless one-record-per-line export of
+  arbitrary string ids, including embedded newlines, NUL, quotes, and Unicode.
+- Document delimiter alternatives, dependency and migration costs, conservative
+  Unicode line-boundary handling, and downstream parsing limits.
+
 ## [0.2.14] - 2026-08-11
 
 ### Fixed
@@ -300,3 +317,4 @@ First release.
 [0.2.12]: https://github.com/CAOShurong/evalint/compare/v0.2.11...v0.2.12
 [0.2.13]: https://github.com/CAOShurong/evalint/compare/v0.2.12...v0.2.13
 [0.2.14]: https://github.com/CAOShurong/evalint/compare/v0.2.13...v0.2.14
+[0.2.15]: https://github.com/CAOShurong/evalint/compare/v0.2.14...v0.2.15

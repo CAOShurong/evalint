@@ -190,6 +190,20 @@ To save the reduced set's item ids, choose a separate output path:
 evalint results.csv --save-reduced keep.txt
 ```
 
+The default file is plain text with one id per physical line. If a kept id
+contains a line boundary, that representation would silently turn one id into
+several; EvalInt instead exits `1` before replacing the destination. Use the
+lossless JSON Lines mode for arbitrary string ids:
+
+```bash
+evalint results.json --save-reduced keep.jsonl --save-reduced-format jsonl
+```
+
+Each JSONL record is one JSON string, so embedded newlines, quotes, NUL, and
+Unicode round-trip without changing the existing plain format for ordinary
+ids. See [`docs/REDUCED_ID_FORMAT.md`](docs/REDUCED_ID_FORMAT.md) for the
+public v0.2.14 reproduction, alternatives, and consumer limits.
+
 EvalInt refuses an output that is the same file as any input, including a
 hard-link alias. It writes a complete temporary file in the destination
 directory and replaces an existing non-input output only after the write and
@@ -363,7 +377,8 @@ Ranking
 ```text
 usage: evalint [-h] [--format {auto,csv,jsonl,matrix,promptfoo,openai-evals}]
                [--similarity N] [--no-duplicates] [--no-reduce]
-               [--fail-under N] [--save-reduced FILE] [--json]
+               [--fail-under N] [--save-reduced FILE]
+               [--save-reduced-format {lines,jsonl}] [--json]
                [--color {auto,always,never}] [--ascii] [--version]
                FILE [FILE ...]
 
@@ -384,6 +399,9 @@ options:
   --fail-under N        exit 2 if reliability is below N (a useful CI gate is
                         0.8)
   --save-reduced FILE   write the reduced set's item ids, one per line
+  --save-reduced-format {lines,jsonl}
+                        reduced-id serialization (default: lines; jsonl
+                        preserves ids containing line breaks)
   --json                machine-readable output
   --color {auto,always,never}
                         colour output (default: auto; NO_COLOR is honoured)
