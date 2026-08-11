@@ -225,6 +225,12 @@ columns is pseudoreplication: it can shrink a permutation p-value without
 adding a genuinely independent model or prompt version. Repeat counts survive
 matrix JSON round trips and remain visible in text and JSON reports.
 
+Each physical result file may appear once in a multi-file audit. Repeating a
+path, or reaching the same file through a symbolic or hard link, fails before
+parsing instead of inventing extra runs. Separate files remain separate even
+when their bytes match, because identical outputs can be genuine stochastic
+runs. See [the duplicate-input boundary](docs/DUPLICATE_INPUTS.md).
+
 **Duplicate detection is textual.** It uses character shingles and MinHash —
 no embedding model, no API key, no GPU — so it finds copy-pasted-and-edited
 items, which is what eval duplicates almost always are. Two items that mean

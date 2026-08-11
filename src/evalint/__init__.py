@@ -31,7 +31,7 @@ from .reduce import Reduction, kendall_tau, reduce_set
 from .report import Audit, audit_matrix, render
 from .stats import ItemStats, SetStats, item_stats, set_stats
 
-__version__ = "0.2.10"
+__version__ = "0.2.11"
 
 __all__ = [
     "Audit",

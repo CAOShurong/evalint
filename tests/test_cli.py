@@ -427,3 +427,15 @@ def test_the_module_is_runnable_with_dash_m(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert "evalint" in result.stdout
+
+
+def test_duplicate_cli_input_fails_without_a_report_or_traceback(tmp_path, capsys):
+    path = _write(tmp_path, HEALTHY)
+
+    assert main([str(path), str(path), "--json"]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "duplicate input" in captured.err
+    assert "same physical file" in captured.err
+    assert "Traceback" not in captured.err
