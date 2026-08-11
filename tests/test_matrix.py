@@ -90,3 +90,19 @@ def test_round_trips_through_a_dict():
     assert back.as_dict() == matrix.as_dict()
     assert back.score("a", "y") is None
     assert back.items["a"].tags == ("maths",)
+
+
+def test_repeat_counts_survive_subset_and_matrix_json_round_trip():
+    matrix = Matrix()
+    matrix.add_item(Item("a"))
+    matrix.record("a", "x", 1.0)
+    matrix.record("a", "x", 0.0)
+    matrix.record("a", "y", 0.0)
+
+    subset = matrix.subset(["a"])
+    back = Matrix.from_dict(subset.as_dict())
+
+    assert back.score("a", "x") == 0.5
+    assert back.repetitions("a", "x") == 2
+    assert back.measurements == 3
+    assert back.runs == 3

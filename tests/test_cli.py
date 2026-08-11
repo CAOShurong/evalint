@@ -79,6 +79,26 @@ def test_json_output_parses(tmp_path, capsys):
     assert payload["summary"]["systems"] == 4
 
 
+def test_invalid_repeat_metadata_is_a_user_error_not_a_traceback(tmp_path, capsys):
+    payload = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                "scores": {"alpha": 1, "beta": 0},
+                "repeats": {"alpha": 0},
+            }
+        ],
+    }
+    path = _write(tmp_path, json.dumps(payload), "bad-matrix.json")
+
+    assert main([str(path)]) == 1
+    error = capsys.readouterr().err
+    assert "invalid evalint matrix" in error
+    assert "Traceback" not in error
+
+
 def test_save_reduced_writes_one_id_per_line(tmp_path, capsys):
     out = tmp_path / "keep.txt"
     main([str(_write(tmp_path, HEALTHY)), "--save-reduced", str(out)])
@@ -126,6 +146,29 @@ def test_several_files_are_merged(tmp_path, capsys):
     assert payload["summary"]["systems"] == 3
     assert payload["summary"]["items"] == 12
     assert payload["source"].endswith("+2 more")
+
+
+def test_repeat_runs_are_reported_but_not_counted_as_systems(tmp_path, capsys):
+    paths = []
+    for run in ("run-1", "run-2"):
+        for model, flip in (("alpha", 0), ("beta", 1)):
+            paths.append(
+                _write(
+                    tmp_path,
+                    "item_id,system,score\n"
+                    + "".join(
+                        f"q{n:02d},{model},{1 if (n + flip) % 3 else 0}\n"
+                        for n in range(12)
+                    ),
+                    f"{run}-{model}.csv",
+                )
+            )
+
+    assert main([*map(str, paths), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["summary"]["systems"] == 2
+    assert payload["summary"]["runs"] == 4
+    assert payload["summary"]["measurements"] == 48
 
 
 def test_a_flag_between_two_filenames_still_works(tmp_path, capsys):

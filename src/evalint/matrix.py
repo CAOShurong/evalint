@@ -58,8 +58,12 @@ class Matrix:
     def __init__(self) -> None:
         self.items: dict[str, Item] = {}
         self.systems: list[str] = []
-        #: (item id, system) -> score in [0, 1]
+        #: (item id, system) -> mean score in [0, 1]. Repeated measurements
+        #: are averaged within the logical system rather than promoted to
+        #: independent systems.
         self._scores: dict[tuple[str, str], float] = {}
+        #: Number of raw measurements represented by each mean score.
+        self._score_counts: dict[tuple[str, str], int] = {}
 
     # -- building ----------------------------------------------------------
 
@@ -78,10 +82,32 @@ class Matrix:
             existing.tags = item.tags
         return existing
 
-    def record(self, item_id: str, system: str, score: float) -> None:
+    def record(
+        self,
+        item_id: str,
+        system: str,
+        score: float,
+        *,
+        repetitions: int = 1,
+    ) -> None:
+        """Record one or more repeated measurements for a logical system.
+
+        LLM runs are often repeated because generation and grading are
+        stochastic. Those repetitions improve the estimate for that system,
+        but they are not additional independent systems. Keeping their count
+        while averaging the cell prevents pseudoreplication downstream.
+        """
+        if repetitions < 1:
+            raise ValueError("repetitions must be at least 1")
         if system not in self.systems:
             self.systems.append(system)
-        self._scores[(item_id, system)] = _clamp(score)
+        key = (item_id, system)
+        value = _clamp(score)
+        previous_count = self._score_counts.get(key, 0)
+        total_count = previous_count + repetitions
+        previous_total = self._scores.get(key, 0.0) * previous_count
+        self._scores[key] = (previous_total + value * repetitions) / total_count
+        self._score_counts[key] = total_count
 
     # -- reading -----------------------------------------------------------
 
@@ -102,6 +128,10 @@ class Matrix:
             if (item_id, system) in self._scores
         }
 
+    def repetitions(self, item_id: str, system: str) -> int:
+        """Raw measurements represented by one logical score cell."""
+        return self._score_counts.get((item_id, system), 0)
+
     @property
     def item_ids(self) -> list[str]:
         return list(self.items)
@@ -111,7 +141,31 @@ class Matrix:
 
     @property
     def observations(self) -> int:
+        """Unique item-by-system cells after repeat aggregation."""
         return len(self._scores)
+
+    @property
+    def measurements(self) -> int:
+        """Raw score measurements read before repeat aggregation."""
+        return sum(self._score_counts.values())
+
+    def runs_for_system(self, system: str) -> int:
+        """Maximum repeated measurements observed for one item of a system."""
+        counts = [
+            count
+            for (item_id, name), count in self._score_counts.items()
+            if name == system and item_id in self.items
+        ]
+        return max(counts, default=0)
+
+    @property
+    def runs(self) -> int:
+        """Run columns represented across all logical systems."""
+        return sum(self.runs_for_system(system) for system in self.systems)
+
+    @property
+    def has_repeats(self) -> bool:
+        return any(count > 1 for count in self._score_counts.values())
 
     @property
     def density(self) -> float:
@@ -148,6 +202,9 @@ class Matrix:
                 score = self._scores.get((item_id, system))
                 if score is not None:
                     out._scores[(item_id, system)] = score
+                    out._score_counts[(item_id, system)] = self._score_counts[
+                        (item_id, system)
+                    ]
         return out
 
     def as_dict(self) -> dict:
@@ -161,6 +218,11 @@ class Matrix:
                     "tags": list(item.tags),
                     "expected": item.expected,
                     "scores": self.scores_for_item(item.id),
+                    "repeats": {
+                        system: self.repetitions(item.id, system)
+                        for system in self.systems
+                        if self.repetitions(item.id, system) > 1
+                    },
                 }
                 for item in self.items.values()
             ],
@@ -180,7 +242,13 @@ class Matrix:
                 )
             )
             for system, score in (entry.get("scores") or {}).items():
-                matrix.record(str(entry["id"]), str(system), float(score))
+                repetitions = int((entry.get("repeats") or {}).get(system, 1))
+                matrix.record(
+                    str(entry["id"]),
+                    str(system),
+                    float(score),
+                    repetitions=repetitions,
+                )
         return matrix
 
 

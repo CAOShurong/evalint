@@ -36,10 +36,11 @@ evalint results.csv
 ```
 
 Python 3.9+. The only requirement is that the file compares **at least two
-systems** — two models, two prompt versions, or the same model run twice.
-Every statistic here is about telling systems apart, so one column is not a
-smaller version of the answer; it is no answer, and the tool says so instead
-of printing something.
+logical systems** — two models or two prompt versions. Repeated stochastic
+runs of one system are averaged within that system; they improve its score
+estimate but do not become independent systems. Every statistic here is about
+telling systems apart, so one logical system is not a smaller version of the
+answer; it is no answer, and the tool says so instead of printing something.
 
 ---
 
@@ -105,10 +106,11 @@ from a rubric or a judge model. Fractional scores keep their resolution:
 rounding them at the door would make every statistic coarser than your data
 actually is.
 
-Several files are merged on the item id. If the same system appears in two of
-them, `evalint` decides what that means by whether the cells collide — the
-same item scored twice is two separate runs and becomes two columns; disjoint
-items are one run split across files and stay one column.
+Several files are merged on the item id. The same system name always means the
+same logical system: repeated item scores are averaged, while disjoint items
+fill out the same column. Distinct models or prompt versions must therefore
+have distinct `system` names in the source data. Reports show logical systems,
+represented runs and raw score measurements separately.
 
 ### In CI
 
@@ -146,7 +148,7 @@ this negative comes out of pure luck. Items that clear it are listed as
 that says so:
 
 > 19 items lean the wrong way, and 8 systems cannot rule out luck. More
-> systems, or repeat runs of the same one, would settle it.
+> independent systems would settle it.
 
 **With three systems, nothing can be proven.** There are only six possible
 orderings, so the smallest achievable p-value is about 1/6. That is the
@@ -162,6 +164,13 @@ number in the report.
 **A missing score is not a zero.** Cells are stored sparsely, and every
 statistic states what it was computed over. Treating "not run" as "failed" is
 the single most misleading thing this tool could do.
+
+**A repeated run is not a new system.** Promptfoo repeats, Inspect epochs and
+duplicate `(item, system)` rows are averaged within the named system before
+item statistics are computed. Counting correlated repeats as independent
+columns is pseudoreplication: it can shrink a permutation p-value without
+adding a genuinely independent model or prompt version. Repeat counts survive
+matrix JSON round trips and remain visible in text and JSON reports.
 
 **Duplicate detection is textual.** It uses character shingles and MinHash —
 no embedding model, no API key, no GPU — so it finds copy-pasted-and-edited
@@ -217,6 +226,10 @@ is prescriptive rather than something you can run) and academic work on
 benchmark contamination and saturation (which is about public benchmarks, not
 the 200-row CSV your team actually ships against). Neither will tell you that
 item 57 is scored against a wrong answer.
+
+The evidence and maintained alternatives behind the repeat-run behavior are
+recorded in [`docs/RESEARCH.md`](docs/RESEARCH.md). Runtime trust boundaries
+and disclosure instructions are in [`SECURITY.md`](SECURITY.md).
 
 ---
 
