@@ -479,6 +479,24 @@ def test_several_openai_evals_logs_merge_into_a_comparable_set(tmp_path):
     assert matrix.score("s2", "gpt-4o") == 1.0
 
 
+def test_mixed_input_formats_have_order_independent_provenance(tmp_path):
+    csv_path = tmp_path / "alpha.csv"
+    jsonl_path = tmp_path / "beta.jsonl"
+    csv_path.write_text(
+        "item_id,system,score\nq1,alpha,1\nq2,alpha,0\n", encoding="utf-8"
+    )
+    jsonl_path.write_text(
+        '{"item_id":"q1","system":"beta","score":0}\n'
+        '{"item_id":"q2","system":"beta","score":1}\n',
+        encoding="utf-8",
+    )
+
+    _, forward = load_many([csv_path, jsonl_path])
+    _, reverse = load_many([jsonl_path, csv_path])
+
+    assert forward == reverse == "mixed:csv,jsonl"
+
+
 def test_merging_does_not_drop_a_file_with_no_usable_scores(tmp_path):
     for system, scores in (
         ("alpha", (1, 0)),

@@ -43,6 +43,11 @@ bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.
 Promptfoo JSON syntax errors use the same no-traceback boundary.
 
+Path and format labels provide diagnostic provenance only. They do not hash,
+sign, archive, or authenticate an input, and a successful report does not
+prove that the named files are the producer's original exports. Mixed-format
+labels are deterministic summaries, not full data-lineage records.
+
 The alias check and replacement are a local accidental-loss boundary, not a
 defence against a hostile process changing filesystem links concurrently.
 Filesystem and operating-system crash guarantees also vary; no claim is made
