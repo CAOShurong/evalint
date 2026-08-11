@@ -17,6 +17,12 @@ denominator too. A public v0.2.5 CLI reproduction read a 3-item, 2-system CSV
 with 3 valid score cells but reported 2 items, 3/4 coverage (75%), and exit
 `0`; the faithful denominator is 3 items and 3/6 coverage (50%).
 
+v0.2.6 still had the mirror-image failure for a whole system. A public CLI
+reproduction supplied three explicitly named systems across two items, with
+valid scores for `alpha` and `gamma` but only `n/a` for `beta`. The command
+exited `0`, reported two systems and 4/4 coverage (100%), and ranked only
+`alpha` and `gamma`; the named but wholly unmeasured `beta` disappeared.
+
 Incomplete evaluation is a documented practical condition, not just a test
 fixture. Research on missing benchmark scores names cost, private systems,
 compute limits, and incomplete data as causes. Inspect AI's maintainers and
@@ -49,6 +55,9 @@ Sources:
 | Report exact coverage and a comparability warning | Zero dependencies; preserves observed data and existing output while exposing the limitation | Selected for v0.2.4. |
 | Drop an item when its last score is skipped | Existing v0.2.5 behavior; cheap, but shrinks both numerator and denominator and can make coverage look healthier | Rejected. Absence of every measurement is still evidence that the item was expected. |
 | Retain a recognizable item before parsing its score | Python standard library; no new dependency, account, or operating cost | Selected for v0.2.6 across long-form records, Promptfoo, and OpenAI Evals. Wide CSV already registered rows before scores. |
+| Drop a named system when all its scores are missing | Existing v0.2.6 behavior; allows the remaining subset to look complete | Rejected. The file explicitly says that comparison target was expected. |
+| Rank an unmeasured system as zero | Produces a total order, but changes "not measured" into "failed" | Rejected for the same reason missing cells are never zero. |
+| Keep the name and refuse the audit | Zero dependencies; prevents a plausible subset ranking and identifies the producer boundary to fix | Selected for v0.2.7. Partial systems with at least one valid score still use the coverage warning. |
 
 Promptfoo 0.122.0 and Inspect AI 0.3.255 were active, MIT-licensed projects when
 checked on 2026-08-11. They preserve richer producer-side error state, but they
@@ -68,6 +77,9 @@ EvalInt's selected fix adds no runtime dependency.
 - CSV/JSONL records, Promptfoo results, and OpenAI Evals events register a
   recognizable item before deciding whether its score is usable. A wholly
   unscored item therefore stays in the item and coverage counts.
+- Importers also register explicit system/provider/run names before parsing a
+  score. If any such system has zero usable scores across the merged input,
+  the audit exits `1` with its name and no report.
 - Raw repeated measurements remain separate from unique coverage cells.
 - No value is imputed, and missing never becomes zero.
 - Reliability continues to use only items observed for every system.
@@ -75,9 +87,10 @@ EvalInt's selected fix adds no runtime dependency.
 The warning is intentionally conservative. It can report that subsets differ,
 but not whether the missingness changed the ranking or why a score is absent.
 An item without a recognizable id cannot be recovered. A system that never has
-one valid score is also not promoted into the statistical system list, because
-ranking a wholly unmeasured system as zero would repeat the error this boundary
-is meant to prevent. Those are false-negative limits, not clean-data claims.
+one valid score is refused rather than ranked. In wide CSV, a column containing
+no parseable score may be indistinguishable from a non-score metadata column;
+that ambiguous shape remains a documented false-negative limit unless the
+producer uses long form or an explicit supported format.
 Conversely, complete coverage does not prove that every run was valid or that
 all systems received semantically identical inputs. Those require producer
 metadata and run-level validation outside EvalInt.

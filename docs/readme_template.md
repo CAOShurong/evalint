@@ -128,8 +128,10 @@ coverage and warns that means and ranks use different denominators. JSON
 reports expose `observations`, `expected_observations`, and `coverage` in the
 summary. An identifiable item remains in that denominator even when every one
 of its score values is blank or unparseable; earlier releases silently removed
-the whole item. This warning does not impute data or make an incomplete
-comparison valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
+the whole item. If an explicitly named system has no usable score anywhere,
+the audit exits `1` and names it instead of silently dropping it or ranking it
+as zero. This warning does not impute data or make an incomplete comparison
+valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
 
 ### In CI
 
