@@ -87,13 +87,13 @@ def test_an_inverted_but_unproven_item_is_separated_from_a_broken_one():
     assert "Probably broken" not in out
 
 
-def test_a_units_mistake_is_warned_about_rather_than_silently_clamped():
-    """A grader emitting 0-100 clamps to all-ones, which would otherwise read
-    as a set where every item is trivial."""
+def test_a_valid_high_pass_rate_is_not_called_a_units_mistake():
+    """Binary scores can legitimately be all ones; their shape cannot reveal
+    what scale the producer intended."""
     matrix = grid({f"i-{n}": "1111" for n in range(8)})
     out = _text(matrix)
-    assert "almost every score is 1.0" in out
-    assert "rescale" in out
+    assert "units" not in out.lower()
+    assert "rescale" not in out
 
 
 def test_ascii_mode_emits_no_characters_a_dumb_terminal_cannot_show():

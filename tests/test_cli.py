@@ -56,6 +56,21 @@ def test_invalid_utf8_exits_one_without_a_traceback(tmp_path, capsys):
     assert "Traceback" not in error
 
 
+def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
+    path = tmp_path / "wrong-scale.csv"
+    path.write_text(
+        "item_id,system,score\nq1,alpha,0\nq1,beta,50\nq2,alpha,100\nq2,beta,0\n",
+        encoding="utf-8",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "[0, 1]" in captured.err
+    assert "normalize" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_a_noisy_set_exits_with_the_problem_status(tmp_path, capsys):
     """Distinct from 1, so a pipeline can tell "your eval set is unsound"
     from "the audit itself fell over"."""

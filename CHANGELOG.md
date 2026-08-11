@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-08-11
+
+### Fixed
+
+- Refuse numeric scores outside `[0, 1]`, `NaN`, and infinity before any
+  statistics run. Earlier releases silently clamped those values and could
+  turn 1-5 or 0-100 rubric scores into a plausible but corrupted audit.
+- Stop guessing that a valid high pass rate means the source used the wrong
+  score units. Binary eval sets can legitimately contain nearly all ones.
+
+### Added
+
+- Document the explicit score-unit boundary, maintained alternatives,
+  normalization formula, and cases the tool cannot infer from values alone.
+
 ## [0.2.2] - 2026-08-11
 
 ### Fixed
@@ -88,3 +103,4 @@ First release.
 [0.2.0]: https://github.com/CAOShurong/evalint/compare/v0.1.0...v0.2.0
 [0.2.1]: https://github.com/CAOShurong/evalint/compare/v0.2.0...v0.2.1
 [0.2.2]: https://github.com/CAOShurong/evalint/compare/v0.2.1...v0.2.2
+[0.2.3]: https://github.com/CAOShurong/evalint/compare/v0.2.2...v0.2.3

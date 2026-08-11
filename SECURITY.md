@@ -24,6 +24,8 @@ file into memory, so a very large or deliberately hostile file can exhaust
 memory or CPU. Run untrusted inputs with operating-system resource limits in a
 multi-tenant environment. Files must be valid UTF-8; an optional leading UTF-8
 BOM is accepted, while malformed bytes fail closed rather than being replaced
-inside identifiers. A successful audit is a statistical diagnostic, not a
-security verdict, proof that answer keys are correct, or proof that the
+inside identifiers. Scores must be finite numbers in `[0, 1]`; out-of-range,
+`NaN`, and infinite values fail before statistics are computed instead of
+being silently clamped. A successful audit is a statistical diagnostic, not
+a security verdict, proof that answer keys are correct, or proof that the
 evaluation process is free from data leakage or prompt injection.

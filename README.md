@@ -104,7 +104,11 @@ space writes `.json` and none of it is labelled.
 Scores may be `1`/`0`, `true`/`false`, `PASS`/`FAIL`, or a float in `[0, 1]`
 from a rubric or a judge model. Fractional scores keep their resolution:
 rounding them at the door would make every statistic coarser than your data
-actually is.
+actually is. Numeric values outside `[0, 1]`, plus `NaN` and infinity, exit
+`1` before a report is produced. EvalInt does not silently clamp or guess a
+scale: normalize a known `[MIN, MAX]` rubric explicitly with
+`(score - MIN) / (MAX - MIN)`. The evidence and limitations are documented in
+[`docs/SCORE_UNITS.md`](docs/SCORE_UNITS.md).
 
 Input text must be UTF-8. A leading UTF-8 byte order mark (BOM), commonly used
 for Excel-compatible CSV, is accepted. Invalid byte sequences exit `1` with

@@ -31,7 +31,7 @@ class Audit:
     summary: SetStats
     clusters: list[Cluster] = field(default_factory=list)
     reduction: Reduction | None = None
-    #: Set when the file's scores looked like they were in the wrong units.
+    #: Retained in the v1 JSON schema; invalid score units now fail at import.
     units_warning: str = ""
 
     @property
@@ -310,29 +310,5 @@ def audit_matrix(
         summary=summary,
         clusters=clusters,
         reduction=reduction,
-        units_warning=_units_warning(matrix),
+        units_warning="",
     )
-
-
-def _units_warning(matrix: Matrix) -> str:
-    """Warn when the scores look like they were in the wrong units.
-
-    A grader emitting 0-100, or -1/1, is common. The matrix clamps into [0, 1]
-    so one stray row cannot corrupt everything, but silently clamping a whole
-    file would turn a units mistake into a set where every system looks
-    perfect.
-    """
-    saturated = sum(
-        1
-        for item_id in matrix.items
-        for system in matrix.systems
-        if (matrix.score(item_id, system) or 0.0) >= 1.0
-    )
-    total = matrix.observations
-    if total and saturated / total > 0.95:
-        return (
-            "almost every score is 1.0 -- if the grader emits 0-100 or 1-5, "
-            "rescale it to 0-1 before auditing, or every item will look "
-            "trivial"
-        )
-    return ""

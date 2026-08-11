@@ -19,7 +19,7 @@ import io
 import json
 import pathlib
 
-from .matrix import Item, Matrix
+from .matrix import InvalidScore, Item, Matrix
 
 __all__ = [
     "ImportError_",
@@ -242,7 +242,10 @@ def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
             "could not recognise this file as eval results; pass --format to "
             f"say what it is (one of: {', '.join(sorted(READERS))})"
         )
-    matrix = reader(text)
+    try:
+        matrix = reader(text)
+    except InvalidScore as exc:
+        raise ImportError_(str(exc)) from exc
     if not matrix.items:
         raise ImportError_(f"read the file as {fmt}, but found no eval items in it")
     return matrix, fmt
