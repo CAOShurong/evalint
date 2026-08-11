@@ -590,6 +590,21 @@ def _read_csv(text: str) -> Matrix:
     except csv.Error:
         dialect = csv.excel
     reader = csv.DictReader(io.StringIO(text), dialect=dialect, strict=True)
+    fieldnames = reader.fieldnames or []
+    seen_headers: set[str] = set()
+    duplicate_headers: list[str] = []
+    for name in fieldnames:
+        if name in seen_headers and name not in duplicate_headers:
+            duplicate_headers.append(name)
+        seen_headers.add(name)
+    if duplicate_headers:
+        displayed = ", ".join(repr(name) for name in duplicate_headers[:3])
+        remaining = len(duplicate_headers) - 3
+        if remaining > 0:
+            displayed += f", and {remaining} more"
+        raise ImportError_(
+            f"duplicate CSV header name: {displayed}; each column name must be unique"
+        )
     rows: list[dict] = []
     try:
         for row in reader:
@@ -610,7 +625,7 @@ def _read_csv(text: str) -> Matrix:
     if not rows:
         return Matrix()
 
-    headers = [h for h in (reader.fieldnames or []) if h]
+    headers = [header for header in fieldnames if header]
     has_system = _first(dict.fromkeys(headers), SYSTEM_KEYS) is not None
     has_score = _first(dict.fromkeys(headers), SCORE_KEYS) is not None
     if has_system and has_score:

@@ -87,6 +87,29 @@ def test_extra_csv_fields_fail_instead_of_leaking_an_internal_error():
     assert "line" in message
 
 
+@pytest.mark.parametrize(
+    "text,duplicate",
+    (
+        (
+            "item_id,system,score,score\nq1,alpha,1,0\nq1,beta,0,1\n",
+            "score",
+        ),
+        (
+            "item_id,alpha,alpha,beta\nq1,1,0,1\nq2,0,1,0\n",
+            "alpha",
+        ),
+    ),
+)
+def test_duplicate_csv_headers_fail_before_values_are_overwritten(text, duplicate):
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "csv")
+
+    message = str(caught.value)
+    assert "duplicate" in message
+    assert duplicate in message
+    assert "header" in message
+
+
 def test_utf8_bom_before_the_first_header_is_accepted(tmp_path):
     path = tmp_path / "bom.csv"
     path.write_text(

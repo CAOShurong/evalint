@@ -122,6 +122,11 @@ than counting separators on physical lines. Unterminated quotes and rows wider
 than the header exit `1` without a partial report; see
 [`docs/CSV_QUOTING.md`](docs/CSV_QUOTING.md).
 
+Every CSV header name must be unique. Exact duplicates exit `1` before any row
+is mapped, because a dictionary reader otherwise keeps the last same-named
+column and silently discards the earlier values. See
+[`docs/CSV_HEADERS.md`](docs/CSV_HEADERS.md).
+
 Several files are merged on the item id. The same system name always means the
 same logical system: repeated item scores are averaged, while disjoint items
 fill out the same column. Distinct models or prompt versions must therefore

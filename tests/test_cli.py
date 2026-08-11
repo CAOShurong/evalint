@@ -458,3 +458,19 @@ def test_malformed_quoted_csv_fails_without_a_report_or_traceback(tmp_path, caps
     assert "CSV syntax error" in captured.err
     assert "line" in captured.err
     assert "Traceback" not in captured.err
+
+
+def test_duplicate_csv_headers_fail_without_a_report_or_traceback(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        "item_id,system,score,score\nq1,alpha,1,0\nq1,beta,0,1\n",
+        "duplicate-header.csv",
+    )
+
+    assert main([str(path), "--json"]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "duplicate CSV header" in captured.err
+    assert "score" in captured.err
+    assert "Traceback" not in captured.err
