@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.19] - 2026-08-12
+
+### Fixed
+
+- Require the exact `evalint/matrix-v1` schema marker in the native reader,
+  including when the caller passes `--format matrix`. Earlier releases could
+  reject an unknown or missing marker during detection, recommend the format
+  flag, and then silently interpret the same document as v1 with exit `0`.
+- Share one schema constant across native detection, serialization, and
+  deserialization so those three boundaries cannot drift independently.
+
+### Added
+
+- Document versioned JSON alternatives, forward-compatibility and migration
+  costs, the reproduced format-override contradiction, and the limits of an
+  exact marker check.
+
 ## [0.2.18] - 2026-08-12
 
 ### Fixed
@@ -373,3 +390,4 @@ First release.
 [0.2.16]: https://github.com/CAOShurong/evalint/compare/v0.2.15...v0.2.16
 [0.2.17]: https://github.com/CAOShurong/evalint/compare/v0.2.16...v0.2.17
 [0.2.18]: https://github.com/CAOShurong/evalint/compare/v0.2.17...v0.2.18
+[0.2.19]: https://github.com/CAOShurong/evalint/compare/v0.2.18...v0.2.19

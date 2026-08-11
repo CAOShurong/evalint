@@ -86,6 +86,11 @@ prevents fractional counts from being truncated and unmatched counts from
 being silently discarded. Exact spelling variants remain distinct, counts are
 not authenticated against source runs, and a valid structure does not prove
 statistical independence, completeness, provenance, or correct aggregation.
+The root schema marker is required and must exactly name `evalint/matrix-v1`;
+an explicit `--format matrix` selects the reader but cannot override this
+version gate. This prevents an unknown future format from being silently
+interpreted with current semantics. It does not authenticate the marker or
+prove that the producer actually followed the named contract.
 
 Human-readable reports and CLI error details encode imported identifiers,
 system names, source paths, and other untrusted labels before writing them to
