@@ -33,6 +33,7 @@ def _deep_json(depth: int = 12_000) -> str:
         + '},{"item_id":"q1","system":"beta","score":0}]'
     )
 
+
 # -- format detection is by shape, not by extension -----------------------
 
 
