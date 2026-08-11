@@ -192,7 +192,7 @@ def _looks_like_csv(text: str) -> bool:
 
 def load(path: pathlib.Path, fmt: str = "auto") -> tuple[Matrix, str]:
     """Read one results file. Returns the matrix and the format that was used."""
-    matrix, used = parse_text(_read_file(path), fmt)
+    matrix, used = _parse_file(path, fmt)
     _require_comparable(matrix, [path])
     return matrix, used
 
@@ -214,13 +214,31 @@ def load_many(paths, fmt: str = "auto") -> tuple[Matrix, str]:
         return load(paths[0], fmt)
 
     parts: list[tuple[str, Matrix]] = []
-    used = fmt
+    used_formats: list[str] = []
     for path in paths:
-        matrix, used = parse_text(_read_file(path), fmt)
+        matrix, used = _parse_file(path, fmt)
         parts.append((path.stem, matrix))
+        used_formats.append(used)
     merged = merge(parts)
     _require_comparable(merged, paths)
-    return merged, used
+    return merged, _format_summary(used_formats)
+
+
+def _parse_file(path: pathlib.Path, fmt: str) -> tuple[Matrix, str]:
+    """Parse one readable file while retaining its identity in diagnostics."""
+    text = _read_file(path)
+    try:
+        return parse_text(text, fmt)
+    except ImportError_ as exc:
+        raise ImportError_(f"{path}: {exc}") from exc
+
+
+def _format_summary(formats: list[str]) -> str:
+    """Describe every detected input format without depending on path order."""
+    unique = sorted(set(formats))
+    if len(unique) == 1:
+        return unique[0]
+    return f"mixed:{','.join(unique)}"
 
 
 def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:

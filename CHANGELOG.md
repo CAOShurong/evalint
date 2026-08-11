@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2026-08-11
+
+### Fixed
+
+- Name the failing input path when a path-based import contains malformed or
+  unsupported content, while retaining the existing line and column detail.
+  Earlier multi-file runs said where inside a file parsing failed but not
+  which member of the batch was responsible.
+- Report mixed auto-detected inputs with a deterministic format summary such
+  as `mixed:csv,jsonl`. Earlier releases returned only the last file's format,
+  so reversing identical inputs changed the report metadata.
+
+### Added
+
+- Document the multi-file provenance boundary, maintained lineage
+  alternatives, and why a format/path label is not an integrity proof.
+
 ## [0.2.8] - 2026-08-11
 
 ### Fixed

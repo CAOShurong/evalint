@@ -295,6 +295,33 @@ def test_several_files_are_merged(tmp_path, capsys):
     assert payload["source"].endswith("+2 more")
 
 
+def test_a_bad_member_of_a_multi_file_import_names_the_file(tmp_path, capsys):
+    good = _write(
+        tmp_path,
+        "item_id,system,score\nq1,alpha,1\nq2,alpha,0\n",
+        "alpha.csv",
+    )
+    bad = _write(
+        tmp_path,
+        "".join(
+            [
+                f'{{"item_id":"q{number}","system":"beta","score":0}}\n'
+                for number in range(1, 6)
+            ]
+        )
+        + '{"item_id":"q6","system":"beta","score":\n',
+        "beta-truncated.jsonl",
+    )
+
+    assert main([str(good), str(bad), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert str(bad) in captured.err
+    assert "line 6" in captured.err
+    assert "column" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_repeat_runs_are_reported_but_not_counted_as_systems(tmp_path, capsys):
     paths = []
     for run in ("run-1", "run-2"):
