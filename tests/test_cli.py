@@ -58,6 +58,27 @@ def test_invalid_utf8_exits_one_without_a_traceback(tmp_path, capsys):
     assert "Traceback" not in error
 
 
+def test_late_malformed_jsonl_exits_one_without_a_traceback(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        '{"item_id":"q1","model":"alpha","score":1}\n'
+        '{"item_id":"q1","model":"beta","score":0}\n'
+        '{"item_id":"q2","model":"alpha","score":0}\n'
+        '{"item_id":"q2","model":"beta","score":1}\n'
+        '{"item_id":"q3","model":"alpha","score":1}\n'
+        '{"item_id":"q3","model":"beta","score":\n',
+        "truncated.jsonl",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "JSONL" in captured.err
+    assert "line 6" in captured.err
+    assert "column" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(

@@ -343,13 +343,37 @@ def _read_matrix(text: str) -> Matrix:
         raise ImportError_(f"invalid evalint matrix: {exc}") from exc
 
 
+def _json_document(text: str, label: str):
+    """Decode one JSON document with a bounded, user-facing location."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ImportError_(
+            f"invalid {label} JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        ) from exc
+
+
+def _json_line(line: str, line_number: int, label: str):
+    """Decode one JSONL record without exposing a Python traceback."""
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError as exc:
+        raise ImportError_(
+            f"invalid {label} JSON on line {line_number}, column {exc.colno}: {exc.msg}"
+        ) from exc
+
+
 def _read_records(text: str) -> Matrix:
     """A JSONL file, or a JSON array, of flat records."""
     stripped = text.lstrip()
     if stripped.startswith("["):
-        records = json.loads(text)
+        records = _json_document(text, "JSON array")
     else:
-        records = [json.loads(line) for line in text.splitlines() if line.strip()]
+        records = [
+            _json_line(line, line_number, "JSONL")
+            for line_number, line in enumerate(text.splitlines(), start=1)
+            if line.strip()
+        ]
     return _from_records([r for r in records if isinstance(r, dict)])
 
 
@@ -409,7 +433,9 @@ def _flatten(record: dict, prefix: str = "", depth: int = 0) -> dict:
 
 def _read_promptfoo(text: str) -> Matrix:
     """promptfoo's eval JSON: results, each with a provider and a test case."""
-    data = json.loads(text)
+    data = _json_document(text, "Promptfoo")
+    if not isinstance(data, dict):
+        raise ImportError_("invalid Promptfoo JSON: the root must be an object")
     results = data.get("results")
     if isinstance(results, dict):
         results = results.get("results", [])
@@ -454,13 +480,10 @@ def _read_openai_evals(text: str) -> Matrix:
     """OpenAI evals' event stream: a spec line, then one event per sample."""
     matrix = Matrix()
     system = "run"
-    for line in text.splitlines():
+    for line_number, line in enumerate(text.splitlines(), start=1):
         if not line.strip():
             continue
-        try:
-            event = json.loads(line)
-        except ValueError:
-            continue
+        event = _json_line(line, line_number, "OpenAI Evals")
         if not isinstance(event, dict):
             continue
         spec = event.get("spec")
