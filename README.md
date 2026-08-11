@@ -142,6 +142,19 @@ failed. Distinct, so a pipeline can tell them apart.
 evalint results.csv --json | jq '.summary.reliability'
 ```
 
+To save the reduced set's item ids, choose a separate output path:
+
+```bash
+evalint results.csv --save-reduced keep.txt
+```
+
+EvalInt refuses an output that is the same file as any input, including a
+hard-link alias. It writes a complete temporary file in the destination
+directory and replaces an existing non-input output only after the write and
+flush succeed. Write failures exit `1` without a traceback or a partial target.
+See [`docs/OUTPUT_SAFETY.md`](docs/OUTPUT_SAFETY.md) for the observed failure,
+alternatives, and filesystem limits.
+
 ---
 
 ## What it will not claim

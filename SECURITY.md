@@ -17,7 +17,11 @@ or cross a security boundary.
 EvalInt is a local, offline analyzer. Its runtime has no third-party
 dependencies, makes no network requests, loads no plugins and does not execute
 code from an input file. It reads the paths explicitly passed on the command
-line and writes only the path explicitly passed to `--save-reduced`.
+line and writes only the path explicitly passed to `--save-reduced`. That
+output may replace an existing non-input file, but EvalInt refuses lexical,
+symbolic-link, and hard-link aliases of every input. A complete sibling
+temporary file is flushed before `os.replace`; write failures leave an
+existing output intact and return exit `1` without a traceback.
 
 Input files are still untrusted data. The current importers read a complete
 file into memory, so a very large or deliberately hostile file can exhaust
@@ -29,3 +33,8 @@ inside identifiers. Scores must be finite numbers in `[0, 1]`; out-of-range,
 being silently clamped. A successful audit is a statistical diagnostic, not
 a security verdict, proof that answer keys are correct, or proof that the
 evaluation process is free from data leakage or prompt injection.
+
+The alias check and replacement are a local accidental-loss boundary, not a
+defence against a hostile process changing filesystem links concurrently.
+Filesystem and operating-system crash guarantees also vary; no claim is made
+that a successful return replaces backups or storage-level durability.
