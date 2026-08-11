@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-08-11
+
+### Fixed
+
+- Preserve explicitly named systems in long-form CSV/JSONL, Promptfoo, OpenAI
+  Evals, matrix, and merged inputs even when a system has no usable scores.
+  Earlier releases could drop that system and report 100% coverage for the
+  remaining systems.
+- Exit `1` with the unscored system name instead of either hiding the system or
+  ranking a wholly unmeasured system as zero.
+
+### Added
+
+- Add a public `Matrix.add_system()` builder method so importers can preserve
+  the difference between a named-but-unmeasured system and no system record.
+
 ## [0.2.6] - 2026-08-11
 
 ### Fixed

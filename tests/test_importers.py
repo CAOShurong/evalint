@@ -188,6 +188,21 @@ def test_a_wholly_unscored_long_form_item_still_counts_toward_coverage():
     assert matrix.density == pytest.approx(0.5)
 
 
+def test_a_named_but_wholly_unscored_system_survives_parsing():
+    matrix, _ = parse_text(
+        "item_id,system,score\n"
+        "q1,alpha,1\n"
+        "q1,beta,n/a\n"
+        "q1,gamma,0\n"
+        "q2,alpha,0\n"
+        "q2,beta,n/a\n"
+        "q2,gamma,1\n"
+    )
+
+    assert matrix.systems == ["alpha", "beta", "gamma"]
+    assert matrix.scores_for_system("beta") == {}
+
+
 def test_promptfoo_keeps_a_test_case_when_its_graders_return_no_score():
     payload = {
         "results": [
@@ -220,6 +235,28 @@ def test_promptfoo_keeps_a_test_case_when_its_graders_return_no_score():
     assert matrix.density == pytest.approx(0.5)
 
 
+def test_promptfoo_preserves_a_provider_with_no_usable_scores():
+    payload = {
+        "results": [
+            {
+                "provider": "alpha",
+                "testCase": {"vars": {"case": "q1"}},
+                "score": 1,
+            },
+            {
+                "provider": "silent-provider",
+                "testCase": {"vars": {"case": "q1"}},
+                "score": None,
+            },
+        ]
+    }
+
+    matrix, fmt = parse_text(json.dumps(payload))
+    assert fmt == "promptfoo"
+    assert matrix.systems == ["alpha", "silent-provider"]
+    assert matrix.scores_for_system("silent-provider") == {}
+
+
 def test_openai_evals_keeps_a_sample_when_the_grader_emits_no_score():
     events = [
         {"spec": {"completion_fns": ["alpha"]}},
@@ -231,6 +268,18 @@ def test_openai_evals_keeps_a_sample_when_the_grader_emits_no_score():
     assert fmt == "openai-evals"
     assert matrix.item_ids == ["q1", "q2"]
     assert matrix.observations == 1
+
+
+def test_openai_evals_preserves_a_run_with_no_usable_scores():
+    events = [
+        {"spec": {"completion_fns": ["silent-run"]}},
+        {"sample_id": "q1", "type": "match", "data": {"prompt": "unscored"}},
+    ]
+
+    matrix, fmt = parse_text("\n".join(json.dumps(event) for event in events))
+    assert fmt == "openai-evals"
+    assert matrix.systems == ["silent-run"]
+    assert matrix.scores_for_system("silent-run") == {}
 
 
 @pytest.mark.parametrize("raw", ["1.01", "-0.01", "nan", "inf", "-inf"])
@@ -387,6 +436,24 @@ def test_several_openai_evals_logs_merge_into_a_comparable_set(tmp_path):
     assert list(matrix.items) == ["s1", "s2"]
     assert matrix.score("s2", "claude") == 0.0
     assert matrix.score("s2", "gpt-4o") == 1.0
+
+
+def test_merging_does_not_drop_a_file_with_no_usable_scores(tmp_path):
+    for system, scores in (
+        ("alpha", (1, 0)),
+        ("beta", ("n/a", "n/a")),
+        ("gamma", (0, 1)),
+    ):
+        (tmp_path / f"{system}.csv").write_text(
+            f"item_id,system,score\nq1,{system},{scores[0]}\nq2,{system},{scores[1]}\n",
+            encoding="utf-8",
+        )
+
+    with pytest.raises(ImportError_) as caught:
+        load_many(sorted(tmp_path.glob("*.csv")))
+    message = str(caught.value)
+    assert "beta" in message
+    assert "no usable scores" in message
 
 
 def test_merging_does_not_invent_systems_from_repeat_runs(tmp_path):

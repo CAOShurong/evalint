@@ -35,6 +35,15 @@ def test_density_reports_how_much_of_the_grid_exists():
     assert matrix.density == 0.75
 
 
+def test_a_named_system_can_exist_before_it_has_a_usable_score():
+    matrix = Matrix()
+    matrix.add_system("waiting-for-grader")
+    matrix.add_system("waiting-for-grader")
+
+    assert matrix.systems == ["waiting-for-grader"]
+    assert matrix.scores_for_system("waiting-for-grader") == {}
+
+
 def test_ranking_is_best_first_and_ties_break_by_name():
     matrix = grid({"a": "110", "b": "110"}, systems=["zeta", "alpha", "mid"])
     assert [name for name, _ in matrix.ranking()] == ["alpha", "zeta", "mid"]

@@ -276,6 +276,7 @@ def merge(parts: list[tuple[str, Matrix]]) -> Matrix:
         for item in matrix.items.values():
             out.add_item(item)
         for system in matrix.systems:
+            out.add_system(system)
             for item_id, score in matrix.scores_for_system(system).items():
                 out.record(
                     item_id,
@@ -303,6 +304,17 @@ def _read_file(path: pathlib.Path) -> str:
 
 
 def _require_comparable(matrix: Matrix, paths) -> None:
+    unscored = [
+        system for system in matrix.systems if not matrix.scores_for_system(system)
+    ]
+    if unscored:
+        names = ", ".join(repr(system) for system in unscored)
+        noun = "system" if len(unscored) == 1 else "systems"
+        raise ImportError_(
+            f"found no usable scores for {noun} {names}. EvalInt will not hide "
+            "an explicitly named system or rank a wholly unmeasured system as "
+            "zero. Check grader/provider errors and the source score fields."
+        )
     if len(matrix.systems) >= 2:
         return
     where = "this file" if not paths or len(paths) == 1 else "these files"
@@ -361,12 +373,14 @@ def _from_records(records: list[dict]) -> Matrix:
                 expected=str(expected_key[1]) if expected_key else "",
             )
         )
+        system = str(system_key[1])
+        matrix.add_system(system)
         if score_key is None:
             continue
         score = _as_score(score_key[1])
         if score is None:
             continue
-        matrix.record(item_id, str(system_key[1]), score)
+        matrix.record(item_id, system, score)
     return matrix
 
 
@@ -425,6 +439,7 @@ def _read_promptfoo(text: str) -> Matrix:
         if not system or not item_id:
             continue
         matrix.add_item(Item(id=str(item_id), text=prompt_text))
+        matrix.add_system(str(system))
         score = entry.get("score")
         if score is None:
             score = entry.get("success")
@@ -465,6 +480,7 @@ def _read_openai_evals(text: str) -> Matrix:
         if not item_id:
             continue
         matrix.add_item(Item(id=item_id, text=str(data.get("prompt", ""))[:400]))
+        matrix.add_system(system)
         score = _as_score(data.get("correct", data.get("score")))
         if score is None:
             continue

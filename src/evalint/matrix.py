@@ -86,6 +86,12 @@ class Matrix:
             existing.tags = item.tags
         return existing
 
+    def add_system(self, system: str) -> str:
+        """Register a named comparison target before a score is available."""
+        if system not in self.systems:
+            self.systems.append(system)
+        return system
+
     def record(
         self,
         item_id: str,
@@ -104,8 +110,7 @@ class Matrix:
         if repetitions < 1:
             raise ValueError("repetitions must be at least 1")
         value = _unit_score(score)
-        if system not in self.systems:
-            self.systems.append(system)
+        self.add_system(system)
         key = (item_id, system)
         previous_count = self._score_counts.get(key, 0)
         total_count = previous_count + repetitions

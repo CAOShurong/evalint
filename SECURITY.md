@@ -32,9 +32,11 @@ inside identifiers. Scores must be finite numbers in `[0, 1]`; out-of-range,
 `NaN`, and infinite values fail before statistics are computed instead of
 being silently clamped. Blank and unparseable scores remain missing, but an
 item with a recognizable id remains in the coverage denominator even when all
-of its scores are missing. A successful audit is a statistical diagnostic,
-not a security verdict, proof that answer keys are correct, or proof that the
-evaluation process is free from data leakage or prompt injection.
+of its scores are missing. An explicitly named system with no usable scores
+causes exit `1` rather than disappearing from a plausible subset report. A
+successful audit is a statistical diagnostic, not a security verdict, proof
+that answer keys are correct, or proof that the evaluation process is free
+from data leakage or prompt injection.
 
 The alias check and replacement are a local accidental-loss boundary, not a
 defence against a hostile process changing filesystem links concurrently.

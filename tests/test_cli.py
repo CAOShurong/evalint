@@ -128,6 +128,26 @@ def test_json_coverage_includes_items_with_no_valid_scores(tmp_path, capsys):
     assert payload["summary"]["coverage"] == pytest.approx(0.5)
 
 
+def test_a_wholly_unscored_system_is_refused_instead_of_hidden(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        "item_id,system,score\n"
+        "q1,alpha,1\n"
+        "q1,beta,n/a\n"
+        "q1,gamma,0\n"
+        "q2,alpha,0\n"
+        "q2,beta,n/a\n"
+        "q2,gamma,1\n",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "beta" in captured.err
+    assert "no usable scores" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_invalid_repeat_metadata_is_a_user_error_not_a_traceback(tmp_path, capsys):
     payload = {
         "schema": "evalint/matrix-v1",
