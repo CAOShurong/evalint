@@ -122,6 +122,13 @@ fill out the same column. Distinct models or prompt versions must therefore
 have distinct `system` names in the source data. Reports show logical systems,
 represented runs and raw score measurements separately.
 
+Missing scores remain missing rather than becoming failures. When systems were
+not scored on the same items, the text report shows the observed/expected cell
+coverage and warns that means and ranks use different denominators. JSON
+reports expose `observations`, `expected_observations`, and `coverage` in the
+summary. This warning does not impute data or make an incomplete comparison
+valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
+
 ### In CI
 
 ```bash

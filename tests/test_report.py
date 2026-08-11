@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from conftest import grid
 from evalint.report import Palette, audit_matrix, render
 
@@ -122,6 +124,28 @@ def test_the_json_payload_is_stable_and_serialisable():
     # Must survive a round trip: this is what a CI job parses.
     assert json.loads(json.dumps(payload))["summary"]["items"] == 12
     assert {"summary", "ranking", "broken", "suspect", "reduction"} <= set(payload)
+
+
+def test_sparse_coverage_is_visible_in_text_and_json():
+    matrix = grid(
+        {"a": "11.", "b": "1.0", "c": "101"},
+        systems=["alpha", "beta", "gamma"],
+    )
+    audit = audit_matrix(matrix)
+    out = render(audit, Palette("never"))
+    payload = audit.as_dict()
+
+    assert "7/9" in out
+    assert "different items" in out
+    assert "not directly comparable" in out
+    assert payload["summary"]["observations"] == 7
+    assert payload["summary"]["expected_observations"] == 9
+    assert payload["summary"]["coverage"] == pytest.approx(7 / 9, abs=0.0001)
+
+
+def test_complete_coverage_has_no_sparse_warning():
+    out = _text(grid({"a": "110", "b": "101"}))
+    assert "not directly comparable" not in out
 
 
 def test_duplicate_detection_can_be_turned_off():
