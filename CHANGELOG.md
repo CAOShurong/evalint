@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-08-11
+
+### Fixed
+
+- Accept the optional UTF-8 byte order mark emitted for Excel interoperability
+  instead of losing the first CSV header and reporting that the file has no
+  eval items.
+- Refuse invalid UTF-8 with an actionable import error instead of silently
+  replacing bytes inside item or system identifiers. Silent replacement could
+  merge distinct records and produce a plausible but corrupted audit.
+
+### Added
+
+- Document the encoding boundary, maintained detection alternatives, and why
+  strict UTF-8 is safer for identifiers than heuristic charset guessing.
+
 ## [0.2.1] - 2026-08-11
 
 ### Fixed
@@ -71,3 +87,4 @@ First release.
 [0.1.0]: https://github.com/CAOShurong/evalint/releases/tag/v0.1.0
 [0.2.0]: https://github.com/CAOShurong/evalint/compare/v0.1.0...v0.2.0
 [0.2.1]: https://github.com/CAOShurong/evalint/compare/v0.2.0...v0.2.1
+[0.2.2]: https://github.com/CAOShurong/evalint/compare/v0.2.1...v0.2.2

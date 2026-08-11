@@ -106,6 +106,12 @@ from a rubric or a judge model. Fractional scores keep their resolution:
 rounding them at the door would make every statistic coarser than your data
 actually is.
 
+Input text must be UTF-8. A leading UTF-8 byte order mark (BOM), commonly used
+for Excel-compatible CSV, is accepted. Invalid byte sequences exit `1` with
+the byte position instead of silently changing an item or system id. EvalInt
+does not guess legacy encodings; see [`docs/ENCODING.md`](docs/ENCODING.md) for
+the safety decision and conversion options.
+
 Several files are merged on the item id. The same system name always means the
 same logical system: repeated item scores are averaged, while disjoint items
 fill out the same column. Distinct models or prompt versions must therefore
