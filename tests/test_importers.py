@@ -1084,6 +1084,161 @@ def test_promptfoo_keeps_distinct_test_cases_that_reuse_the_same_vars():
     assert all("untrusted" not in item_id for item_id in matrix.item_ids)
 
 
+def test_promptfoo_can_audit_one_named_metric_instead_of_the_aggregate_score():
+    records = []
+    for test_idx, case in enumerate(("q1", "q2")):
+        for label, named_scores in (
+            ("accuracy-provider", {"Accuracy": 1, "Safety": 0}),
+            ("safety-provider", {"Accuracy": 0, "Safety": 1}),
+        ):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {"vars": {"case": case}},
+                    "promptId": "prompt-a",
+                    "provider": {"id": "local:same-id", "label": label},
+                    "prompt": {"raw": "untrusted rendered prompt"},
+                    "success": False,
+                    "score": 0.5,
+                    "namedScores": named_scores,
+                    "failureReason": 1,
+                }
+            )
+    text = "\n".join(json.dumps(record) for record in records)
+
+    aggregate, _ = load_text(text)
+    accuracy, fmt = load_text(text, promptfoo_metric="Accuracy")
+
+    accuracy_system = next(
+        system for system in accuracy.systems if "accuracy-provider" in system
+    )
+    safety_system = next(
+        system for system in accuracy.systems if "safety-provider" in system
+    )
+    assert fmt == "promptfoo"
+    assert set(aggregate.scores_for_system(accuracy_system).values()) == {0.5}
+    assert set(aggregate.scores_for_system(safety_system).values()) == {0.5}
+    assert set(accuracy.scores_for_system(accuracy_system).values()) == {1.0}
+    assert set(accuracy.scores_for_system(safety_system).values()) == {0.0}
+    assert accuracy.observations == 4
+
+
+def test_promptfoo_named_metric_absence_remains_missing_coverage():
+    records = []
+    for test_idx, case in enumerate(("q1", "q2")):
+        for provider, score in (("alpha", 1), ("beta", 0)):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {"vars": {"case": case}},
+                    "promptId": "prompt-a",
+                    "provider": {"id": provider},
+                    "success": bool(score),
+                    "score": score,
+                    "namedScores": {"Accuracy": score} if test_idx == 0 else {},
+                    "failureReason": 0 if score else 1,
+                }
+            )
+
+    matrix, _ = load_text(
+        "\n".join(json.dumps(record) for record in records),
+        promptfoo_metric="Accuracy",
+    )
+
+    assert len(matrix) == 2
+    assert matrix.observations == 2
+    assert matrix.measurements == 2
+    assert matrix.density == 0.5
+
+
+def test_promptfoo_missing_named_metric_fails_without_listing_available_names():
+    record = {
+        "testIdx": 0,
+        "promptIdx": 0,
+        "testCase": {"vars": {"case": "q1"}},
+        "promptId": "prompt-a",
+        "provider": {"id": "alpha"},
+        "success": True,
+        "score": 1,
+        "namedScores": {"PRIVATE_AVAILABLE_METRIC": 1},
+        "failureReason": 0,
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        load_text(json.dumps(record), promptfoo_metric="Missing")
+
+    message = str(caught.value)
+    assert "selected Promptfoo metric was not found" in message
+    assert "PRIVATE" not in message
+    assert "Missing" not in message
+    assert len(message) < 100
+
+
+@pytest.mark.parametrize(
+    "named_scores",
+    ("PRIVATE_NAMED_SCORES_SENTINEL", {"Accuracy": "PRIVATE_SCORE_SENTINEL"}),
+)
+def test_promptfoo_invalid_selected_metric_data_fails_without_echo(named_scores):
+    record = {
+        "testIdx": 0,
+        "promptIdx": 0,
+        "testCase": {"vars": {"case": "q1"}},
+        "promptId": "prompt-a",
+        "provider": {"id": "alpha"},
+        "success": True,
+        "score": 1,
+        "namedScores": named_scores,
+        "failureReason": 0,
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(record), promptfoo_metric="Accuracy")
+
+    message = str(caught.value)
+    assert "invalid" in message
+    assert "PRIVATE" not in message
+    assert len(message) < 100
+
+
+def test_promptfoo_provider_error_stays_missing_for_a_selected_metric():
+    records = []
+    for label, failure_reason in (("pass-config", 0), ("error-config", 2)):
+        records.append(
+            {
+                "testIdx": 0,
+                "promptIdx": 0,
+                "testCase": {"vars": {"case": "q1"}},
+                "promptId": "prompt-a",
+                "provider": {"id": "local:same-id", "label": label},
+                "success": failure_reason == 0,
+                "score": 1 if failure_reason == 0 else 0,
+                "namedScores": {"Accuracy": 1},
+                "failureReason": failure_reason,
+                "error": "PRIVATE_PROVIDER_SENTINEL" if failure_reason else None,
+            }
+        )
+
+    matrix, _ = parse_text(
+        "\n".join(json.dumps(record) for record in records),
+        promptfoo_metric="Accuracy",
+    )
+
+    pass_system = next(system for system in matrix.systems if "pass-config" in system)
+    error_system = next(system for system in matrix.systems if "error-config" in system)
+    assert set(matrix.scores_for_system(pass_system).values()) == {1.0}
+    assert matrix.scores_for_system(error_system) == {}
+
+
+@pytest.mark.parametrize("metric", ("", "   ", True))
+def test_promptfoo_metric_name_must_be_a_nonblank_string(metric):
+    with pytest.raises(ImportError_) as caught:
+        parse_text(_current_promptfoo_jsonl(), promptfoo_metric=metric)
+
+    assert "nonblank string" in str(caught.value)
+
+
 def test_current_promptfoo_v3_json_results_remain_supported():
     payload = {
         "version": 3,

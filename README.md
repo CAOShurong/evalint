@@ -180,6 +180,14 @@ An entirely errored system therefore exits `1`; a partially errored run shows
 incomplete coverage. Assertion failures (`failureReason=1`) remain observed
 scores. See [`docs/PROMPTFOO_ERRORS.md`](docs/PROMPTFOO_ERRORS.md).
 
+Promptfoo can export several named assertion metrics beside one aggregate
+score. Pass `--promptfoo-metric NAME` to audit one exact, case-sensitive
+`namedScores` dimension instead of that aggregate. Rows without the selected
+metric remain missing and lower coverage; EvalInt never fills them with zero.
+The text and JSON reports record the selection, while other metric names,
+assertion bodies, and values are not enumerated. See
+[`docs/PROMPTFOO_NAMED_METRICS.md`](docs/PROMPTFOO_NAMED_METRICS.md).
+
 JSON that exceeds Python's safe nesting boundary exits `1` with a bounded
 message and no traceback across automatic detection and every JSON reader.
 EvalInt does not raise the interpreter's recursion limit or claim that a clean
@@ -455,8 +463,8 @@ Ranking
 
 ```text
 usage: evalint [-h] [--format {auto,csv,jsonl,matrix,promptfoo,openai-evals}]
-               [--similarity N] [--no-duplicates] [--no-reduce]
-               [--fail-under N] [--save-reduced FILE]
+               [--promptfoo-metric NAME] [--similarity N] [--no-duplicates]
+               [--no-reduce] [--fail-under N] [--save-reduced FILE]
                [--save-reduced-format {lines,jsonl}] [--json]
                [--color {auto,always,never}] [--ascii] [--version]
                FILE [FILE ...]
@@ -471,6 +479,9 @@ options:
   -h, --help            show this help message and exit
   --format {auto,csv,jsonl,matrix,promptfoo,openai-evals}
                         input shape (default: detected from the file)
+  --promptfoo-metric NAME
+                        audit one Promptfoo named score instead of its
+                        aggregate score
   --similarity N        how alike two items must be to count as duplicates
                         (0-1, default: 0.8)
   --no-duplicates       skip duplicate detection
@@ -490,6 +501,7 @@ options:
 Examples:
   evalint results.csv
   evalint promptfoo-output.jsonl
+  evalint promptfoo-output.jsonl --promptfoo-metric Safety
   evalint results.jsonl --json
   evalint results.csv --fail-under 0.8
   evalint gpt-4o.jsonl claude.jsonl llama.jsonl

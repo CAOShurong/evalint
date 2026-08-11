@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Examples:\n"
             "  evalint results.csv\n"
             "  evalint promptfoo-output.jsonl\n"
+            "  evalint promptfoo-output.jsonl --promptfoo-metric Safety\n"
             "  evalint results.jsonl --json\n"
             "  evalint results.csv --fail-under 0.8\n"
             "  evalint gpt-4o.jsonl claude.jsonl llama.jsonl\n"
@@ -71,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         choices=("auto", "csv", "jsonl", "matrix", "promptfoo", "openai-evals"),
         help="input shape (default: detected from the file)",
+    )
+    parser.add_argument(
+        "--promptfoo-metric",
+        metavar="NAME",
+        help="audit one Promptfoo named score instead of its aggregate score",
     )
     parser.add_argument(
         "--similarity",
@@ -151,14 +157,21 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
     try:
-        matrix, fmt = load_many(args.paths, args.format)
+        matrix, fmt = load_many(
+            args.paths,
+            args.format,
+            promptfoo_metric=args.promptfoo_metric,
+        )
     except ImportError_ as exc:
         _print_error(exc)
         return 1
 
+    source = _source_name(args.paths)
+    if args.promptfoo_metric is not None:
+        source += f" [Promptfoo metric: {args.promptfoo_metric}]"
     audit = audit_matrix(
         matrix,
-        source=_source_name(args.paths),
+        source=source,
         detect_duplicates=not args.no_duplicates,
         reduce=not args.no_reduce,
         similarity=args.similarity,
@@ -178,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         payload = audit.as_dict()
         payload["format"] = fmt
+        if args.promptfoo_metric is not None:
+            payload["promptfoo_metric"] = args.promptfoo_metric
         json.dump(payload, sys.stdout, indent=2, sort_keys=True)
         sys.stdout.write("\n")
     else:
