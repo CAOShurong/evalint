@@ -70,6 +70,7 @@ def _promptfoo_jsonl() -> str:
                     "testIdx": test_idx,
                     "promptIdx": prompt_idx,
                     "testCase": {"vars": {"case": f"q{test_idx + 1}"}},
+                    "promptId": "prompt-answer-v1",
                     "provider": {"id": provider},
                     "prompt": {"raw": "Answer {{case}}"},
                     "success": provider == "alpha",

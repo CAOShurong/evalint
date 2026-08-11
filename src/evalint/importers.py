@@ -650,6 +650,23 @@ def _starts_with_promptfoo_jsonl_result(text: str) -> bool:
     return False
 
 
+def _promptfoo_system_id(provider: str, entry: dict, location: str) -> str:
+    """Keep the prompt version in current Promptfoo comparison identities."""
+    if "promptId" not in entry:
+        # Older Promptfoo envelopes did not carry a prompt id on every result.
+        return provider
+    prompt_id = entry["promptId"]
+    if not isinstance(prompt_id, str) or not prompt_id.strip():
+        raise ImportError_(f"{location} has an invalid promptId")
+    identity = json.dumps(
+        {"prompt_id": prompt_id, "provider": provider},
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return f"promptfoo:{identity}"
+
+
 def _read_promptfoo(text: str) -> Matrix:
     """Promptfoo eval JSON envelopes and current per-result JSONL exports."""
     locations: list[str] | None = None
@@ -719,15 +736,16 @@ def _read_promptfoo(text: str) -> Matrix:
                 missing = "provider" if not system else "test identity"
                 raise ImportError_(f"{location} has no usable {missing}")
             continue
+        system = _promptfoo_system_id(str(system), entry, location)
         matrix.add_item(Item(id=str(item_id), text=prompt_text))
-        matrix.add_system(str(system))
+        matrix.add_system(system)
         score = entry.get("score")
         if score is None:
             score = entry.get("success")
         score = _as_score(score)
         if score is None:
             continue
-        matrix.record(str(item_id), str(system), score)
+        matrix.record(str(item_id), system, score)
     return matrix
 
 

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.26] - 2026-08-12
+
+### Fixed
+
+- Preserve Promptfoo's current `promptId` alongside the provider in the system
+  identity, so prompt versions run on the same provider are compared instead
+  of silently averaged as repeat measurements.
+- Reject a present null, blank, boolean, or non-string Promptfoo `promptId`
+  rather than falling back to provider-only grouping.
+- Keep legacy Promptfoo results without a per-result `promptId` compatible with
+  their existing provider-only identity.
+
+### Added
+
+- Document a real Promptfoo CLI reproduction, the resulting false ranking and
+  reduction, maintained alternatives, migration costs, and remaining identity
+  limits.
+
 ## [0.2.25] - 2026-08-12
 
 ### Added
