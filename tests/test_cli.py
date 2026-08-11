@@ -322,6 +322,30 @@ def test_a_bad_member_of_a_multi_file_import_names_the_file(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+def test_conflicting_item_identity_fails_before_reporting(tmp_path, capsys):
+    first = _write(
+        tmp_path,
+        "item_id,text,expected,system,score\n"
+        "q1,What is the capital of France?,Paris,alpha,1\n",
+        "alpha.csv",
+    )
+    second = _write(
+        tmp_path,
+        "item_id,text,expected,system,score\n"
+        "q1,What is the capital of Germany?,Berlin,beta,1\n",
+        "beta.csv",
+    )
+
+    assert main([str(first), str(second), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert str(first) in captured.err
+    assert str(second) in captured.err
+    assert "q1" in captured.err
+    assert "conflicting text" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_repeat_runs_are_reported_but_not_counted_as_systems(tmp_path, capsys):
     paths = []
     for run in ("run-1", "run-2"):

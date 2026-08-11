@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10] - 2026-08-11
+
+### Fixed
+
+- Refuse to merge the same item id when nonempty prompt text or expected
+  answers conflict. Earlier releases silently attached scores for different
+  eval cases to one first-seen item and could emit a plausible clean report.
+- Name both the first and conflicting input files for cross-file identity
+  drift without echoing the prompt or answer contents.
+- Treat an item-id display fallback as missing text so a later source with
+  real prompt text can still enrich the item instead of being ignored.
+
+### Added
+
+- Export `ConflictingItem` for callers that build `Matrix` objects directly.
+- Document the item-identity boundary, maintained validation/versioning
+  alternatives, and the drift that id-only exports cannot reveal.
+
 ## [0.2.9] - 2026-08-11
 
 ### Fixed

@@ -145,6 +145,13 @@ keeps its ordinary label. These labels make a batch explainable, but do not
 hash its inputs or prove their origin; see
 [`docs/MULTI_FILE_PROVENANCE.md`](docs/MULTI_FILE_PROVENANCE.md).
 
+An item id must identify the same eval case everywhere it appears. If two
+rows or files give one id different nonempty prompt text or expected answers,
+the import exits `1` before producing a report and names the conflicting
+sources. Missing metadata may still be filled by a later row. EvalInt compares
+the supplied metadata exactly rather than guessing whether changed prompts are
+equivalent; see [`docs/ITEM_IDENTITY.md`](docs/ITEM_IDENTITY.md).
+
 ### In CI
 
 ```bash

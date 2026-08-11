@@ -497,6 +497,80 @@ def test_mixed_input_formats_have_order_independent_provenance(tmp_path):
     assert forward == reverse == "mixed:csv,jsonl"
 
 
+def test_merging_refuses_conflicting_text_for_the_same_item_id(tmp_path):
+    first = tmp_path / "alpha.csv"
+    second = tmp_path / "beta.csv"
+    first.write_text(
+        "item_id,text,expected,system,score\n"
+        "q1,What is the capital of France?,Paris,alpha,1\n",
+        encoding="utf-8",
+    )
+    second.write_text(
+        "item_id,text,expected,system,score\n"
+        "q1,What is the capital of Germany?,Berlin,beta,1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        load_many([first, second])
+
+    message = str(caught.value)
+    assert str(first) in message
+    assert str(second) in message
+    assert "q1" in message
+    assert "conflicting text" in message
+
+
+def test_merging_refuses_conflicting_expected_answers(tmp_path):
+    first = tmp_path / "alpha.csv"
+    second = tmp_path / "beta.csv"
+    first.write_text(
+        "item_id,text,expected,system,score\nq1,Compute 2 + 2,4,alpha,1\n",
+        encoding="utf-8",
+    )
+    second.write_text(
+        "item_id,text,expected,system,score\nq1,Compute 2 + 2,5,beta,0\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        load_many([first, second])
+
+    assert "conflicting expected" in str(caught.value)
+
+
+def test_one_file_cannot_reuse_an_item_id_for_different_text(tmp_path):
+    path = tmp_path / "drifted.csv"
+    path.write_text(
+        "item_id,text,system,score\n"
+        "q1,What is the capital of France?,alpha,1\n"
+        "q1,What is the capital of Germany?,beta,1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        load(path)
+
+    message = str(caught.value)
+    assert str(path) in message
+    assert "q1" in message
+    assert "conflicting text" in message
+
+
+def test_missing_text_can_be_filled_by_a_later_file(tmp_path):
+    first = tmp_path / "alpha.csv"
+    second = tmp_path / "beta.csv"
+    first.write_text("item_id,system,score\nq1,alpha,1\n", encoding="utf-8")
+    second.write_text(
+        "item_id,text,system,score\nq1,Compute 2 + 2,beta,0\n",
+        encoding="utf-8",
+    )
+
+    matrix, _ = load_many([first, second])
+
+    assert matrix.items["q1"].text == "Compute 2 + 2"
+
+
 def test_merging_does_not_drop_a_file_with_no_usable_scores(tmp_path):
     for system, scores in (
         ("alpha", (1, 0)),
