@@ -8,6 +8,7 @@ with no problems in it, which reads as "your eval set is clean".
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 
 import pytest
@@ -477,6 +478,61 @@ def test_several_openai_evals_logs_merge_into_a_comparable_set(tmp_path):
     assert list(matrix.items) == ["s1", "s2"]
     assert matrix.score("s2", "claude") == 0.0
     assert matrix.score("s2", "gpt-4o") == 1.0
+
+
+def test_the_same_input_path_cannot_be_counted_as_another_run(tmp_path):
+    path = tmp_path / "results.csv"
+    path.write_text("item_id,system,score\nq1,alpha,1\nq1,beta,0\n", encoding="utf-8")
+
+    with pytest.raises(ImportError_) as caught:
+        load_many([path, path])
+
+    assert "duplicate input" in str(caught.value)
+    assert "same physical file" in str(caught.value)
+
+
+def test_a_hard_link_alias_cannot_be_counted_as_another_run(tmp_path):
+    path = tmp_path / "results.csv"
+    alias = tmp_path / "results-hardlink.csv"
+    path.write_text("item_id,system,score\nq1,alpha,1\nq1,beta,0\n", encoding="utf-8")
+    os.link(path, alias)
+
+    with pytest.raises(ImportError_) as caught:
+        load_many([path, alias])
+
+    message = str(caught.value)
+    assert str(path) in message
+    assert str(alias) in message
+    assert "same physical file" in message
+
+
+def test_a_symbolic_link_alias_cannot_be_counted_as_another_run(tmp_path):
+    path = tmp_path / "results.csv"
+    alias = tmp_path / "results-symlink.csv"
+    path.write_text("item_id,system,score\nq1,alpha,1\nq1,beta,0\n", encoding="utf-8")
+    try:
+        os.symlink(path, alias)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symbolic links are unavailable: {exc}")
+
+    with pytest.raises(ImportError_) as caught:
+        load_many([path, alias])
+
+    assert "same physical file" in str(caught.value)
+
+
+def test_byte_identical_independent_run_files_remain_allowed(tmp_path):
+    first = tmp_path / "run-1.csv"
+    second = tmp_path / "run-2.csv"
+    contents = "item_id,system,score\nq1,alpha,1\nq1,beta,0\n"
+    first.write_text(contents, encoding="utf-8")
+    second.write_text(contents, encoding="utf-8")
+
+    matrix, _ = load_many([first, second])
+
+    assert matrix.observations == 2
+    assert matrix.measurements == 4
+    assert matrix.runs == 4
 
 
 def test_mixed_input_formats_have_order_independent_provenance(tmp_path):

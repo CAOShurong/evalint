@@ -17,6 +17,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import pathlib
 
 from .matrix import ConflictingItem, InvalidScore, Item, Matrix
@@ -212,6 +213,7 @@ def load_many(paths, fmt: str = "auto") -> tuple[Matrix, str]:
     paths = list(paths)
     if len(paths) == 1:
         return load(paths[0], fmt)
+    _reject_duplicate_inputs(paths)
 
     parts: list[tuple[str, Matrix]] = []
     used_formats: list[str] = []
@@ -222,6 +224,33 @@ def load_many(paths, fmt: str = "auto") -> tuple[Matrix, str]:
     merged = merge(parts)
     _require_comparable(merged, paths)
     return merged, _format_summary(used_formats)
+
+
+def _reject_duplicate_inputs(paths: list[pathlib.Path]) -> None:
+    """Refuse path aliases that would count one physical file more than once."""
+    accepted: dict[tuple[object, ...], pathlib.Path] = {}
+    for path in paths:
+        try:
+            metadata = path.stat()
+        except OSError:
+            # Preserve a useful duplicate error for repeated relative and
+            # absolute spellings even when the eventual read will fail.
+            identity: tuple[object, ...] = (
+                "path",
+                os.path.normcase(os.path.abspath(path)),
+            )
+        else:
+            # This is the device/inode identity used by os.path.samefile, but
+            # cached so a large batch needs one metadata read per path rather
+            # than a quadratic number of samefile/stat calls.
+            identity = ("file", metadata.st_dev, metadata.st_ino)
+        earlier = accepted.get(identity)
+        if earlier is not None:
+            raise ImportError_(
+                f"duplicate input {path}: it refers to the same physical file "
+                f"as {earlier}; pass each result file once"
+            )
+        accepted[identity] = path
 
 
 def _parse_file(path: pathlib.Path, fmt: str) -> tuple[Matrix, str]:

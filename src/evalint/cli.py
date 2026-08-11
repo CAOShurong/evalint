@@ -49,7 +49,8 @@ def build_parser() -> argparse.ArgumentParser:
             "There must be at least two logical systems to compare: two models\n"
             "or two prompt versions. Repeat runs of the same named system are\n"
             "averaged rather than counted as independent evidence. Formats\n"
-            "that log one run per file are merged on the item id.\n"
+            "that log one run per file are merged on the item id. Pass each\n"
+            "physical result file once; path and hard-link aliases are refused.\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

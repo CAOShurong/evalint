@@ -53,6 +53,15 @@ closed before statistics are computed. The error names the item id and source
 paths but does not echo the conflicting content. Id-only exports cannot expose
 content drift, and this comparison is not a dataset-version or integrity proof.
 
+Multi-file imports compare filesystem device and file identifiers before
+parsing. Repeated paths, symbolic links, and hard links to one physical file
+fail instead of inflating represented runs and measurements. The check does
+not hash contents: independent copied files remain valid, even if they are an
+accidental duplicate export. A clean check therefore does not prove unique
+content, independent provenance, or that every intended run was supplied.
+Remote, virtual, and unusual filesystems can expose incomplete or unstable
+file identifiers; a hostile process can also replace a path after the check.
+
 The alias check and replacement are a local accidental-loss boundary, not a
 defence against a hostile process changing filesystem links concurrently.
 Filesystem and operating-system crash guarantees also vary; no claim is made
