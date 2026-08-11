@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] - 2026-08-11
+
+### Fixed
+
+- Refuse exact duplicate CSV header names before `DictReader` turns a row into
+  a dictionary. Earlier releases silently kept the last same-named column; two
+  reproduced `score` columns with opposite values reversed the ranking while
+  the CLI exited `0` with an ordinary report.
+- Apply the same check to long and wide CSV so repeated model columns cannot
+  discard earlier scores either.
+
+### Added
+
+- Document the header-identity contract, maintained schema-validation
+  alternatives, and case/alias collisions that this exact check does not infer.
+
 ## [0.2.12] - 2026-08-11
 
 ### Fixed
@@ -261,3 +277,4 @@ First release.
 [0.2.10]: https://github.com/CAOShurong/evalint/compare/v0.2.9...v0.2.10
 [0.2.11]: https://github.com/CAOShurong/evalint/compare/v0.2.10...v0.2.11
 [0.2.12]: https://github.com/CAOShurong/evalint/compare/v0.2.11...v0.2.12
+[0.2.13]: https://github.com/CAOShurong/evalint/compare/v0.2.12...v0.2.13

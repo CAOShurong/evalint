@@ -47,6 +47,13 @@ still be rejected, and a structurally valid CSV can still contain wrong
 headers, omitted rows, duplicated exports, or misleading values. Successful
 detection is not a completeness, provenance, or semantic-validity check.
 
+Exact duplicate CSV header names fail before a data row is mapped into a
+dictionary, preventing last-column-wins value loss. The error names at most
+three duplicated headers and never echoes row values. Case variants, whitespace
+variants, and different aliases such as `item_id` and `id` remain distinct
+headers; EvalInt does not infer that a producer intended them to be one column.
+This check is structural, not a full schema or meaning validator.
+
 Malformed JSONL and OpenAI Evals records fail at the first invalid line with a
 bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.
