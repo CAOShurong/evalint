@@ -174,6 +174,11 @@ Native item `text` and `expected` values, when present, must be strings, and
 instead of becoming invented text or character-by-character labels; omitted
 properties keep their empty defaults. See
 [`docs/NATIVE_ITEM_METADATA.md`](docs/NATIVE_ITEM_METADATA.md).
+Native `scores` values must be finite JSON numbers in `[0, 1]`; boolean pass
+flags, quoted numbers, null, arrays, and objects fail instead of affecting the
+ranking through Python coercion. Generic CSV and third-party importers keep
+their compatibility policy. See
+[`docs/NATIVE_SCORE_TYPES.md`](docs/NATIVE_SCORE_TYPES.md).
 
 Path-based parse errors name the failing input as well as the record location.
 When auto-detected files use more than one representation, JSON reports use a

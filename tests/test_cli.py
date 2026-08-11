@@ -164,6 +164,31 @@ def test_null_native_item_text_exits_one_without_a_report(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+def test_boolean_native_score_exits_one_without_a_report(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        json.dumps(
+            {
+                "schema": "evalint/matrix-v1",
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {
+                        "id": "q1",
+                        "scores": {"alpha": True, "beta": False},
+                    },
+                ],
+            }
+        ),
+        "boolean-scores.json",
+    )
+
+    assert main([str(path), "--format", "matrix", "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "matrix items[1] score must be a JSON number" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(
