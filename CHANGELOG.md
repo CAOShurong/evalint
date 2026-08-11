@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17] - 2026-08-12
+
+### Fixed
+
+- Validate identity in the native `evalint/matrix-v1` reader: item and system
+  identifiers must be nonblank strings and unique in their arrays, while score
+  keys must reference a declared system. Earlier releases could count one
+  duplicated system name twice, merge duplicate item objects as hidden repeat
+  runs, coerce null ids to `"None"`, or add a typoed score key as a new system.
+- Refuse malformed native `systems`, `items`, `scores`, and `repeats`
+  containers with bounded import errors instead of relying on incidental Python
+  conversions.
+
+### Added
+
+- Document the native matrix contract, zero-dependency validation decision,
+  migration cost, and exact-uniqueness false-positive/false-negative limits.
+
 ## [0.2.16] - 2026-08-12
 
 ### Fixed
@@ -337,3 +355,4 @@ First release.
 [0.2.14]: https://github.com/CAOShurong/evalint/compare/v0.2.13...v0.2.14
 [0.2.15]: https://github.com/CAOShurong/evalint/compare/v0.2.14...v0.2.15
 [0.2.16]: https://github.com/CAOShurong/evalint/compare/v0.2.15...v0.2.16
+[0.2.17]: https://github.com/CAOShurong/evalint/compare/v0.2.16...v0.2.17

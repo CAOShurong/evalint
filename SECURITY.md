@@ -76,6 +76,13 @@ variants can still remain distinct. This check does not authenticate names,
 prove that records are complete, or establish that two named systems are
 independent comparison targets.
 
+The native `evalint/matrix-v1` reader also refuses duplicate, null, blank, or
+non-string item and system identities, and refuses score keys that are absent
+from its declared system array. This prevents a malformed round-trip artifact
+from manufacturing duplicate comparison columns or silently expanding the
+comparison set. Exact spelling variants remain distinct, and a valid structure
+does not authenticate a system or prove statistical independence.
+
 Human-readable reports and CLI error details encode imported identifiers,
 system names, source paths, and other untrusted labels before writing them to
 the terminal. Non-printable Unicode and control characters are emitted as

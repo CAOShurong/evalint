@@ -54,6 +54,17 @@ class Item:
     expected: str = ""
 
 
+def _native_identifier(value, kind: str, location: str) -> str:
+    """Validate an identifier from evalint's own versioned matrix format."""
+    if value is None:
+        raise ValueError(f"{location} has a null {kind} identifier")
+    if not isinstance(value, str):
+        raise ValueError(f"{location} {kind} identifier must be a string")
+    if not value.strip():
+        raise ValueError(f"{location} has a blank {kind} identifier")
+    return value
+
+
 class Matrix:
     """Item-by-system scores, plus the bookkeeping to keep them honest.
 
@@ -258,22 +269,71 @@ class Matrix:
 
     @classmethod
     def from_dict(cls, raw: dict) -> Matrix:
+        systems = raw.get("systems", ())
+        if not isinstance(systems, list):
+            raise ValueError("matrix systems must be an array")
+
         matrix = cls()
-        matrix.systems = list(raw.get("systems", ()))
-        for entry in raw.get("items", ()):
+        declared_systems: set[str] = set()
+        for position, value in enumerate(systems, start=1):
+            system = _native_identifier(value, "system", f"matrix systems[{position}]")
+            if system in declared_systems:
+                raise ValueError(
+                    f"matrix systems[{position}] has a duplicate system identifier"
+                )
+            declared_systems.add(system)
+            matrix.add_system(system)
+
+        items = raw.get("items", ())
+        if not isinstance(items, list):
+            raise ValueError("matrix items must be an array")
+
+        item_ids: set[str] = set()
+        for position, entry in enumerate(items, start=1):
+            if not isinstance(entry, dict):
+                raise ValueError(f"matrix items[{position}] must be an object")
+            if "id" not in entry:
+                raise ValueError(
+                    f"matrix items[{position}] has a missing item identifier"
+                )
+            item_id = _native_identifier(
+                entry["id"], "item", f"matrix items[{position}]"
+            )
+            if item_id in item_ids:
+                raise ValueError(
+                    f"matrix items[{position}] has a duplicate item identifier"
+                )
+            item_ids.add(item_id)
             matrix.add_item(
                 Item(
-                    id=str(entry["id"]),
+                    id=item_id,
                     text=str(entry.get("text", "")),
                     tags=tuple(entry.get("tags", ())),
                     expected=str(entry.get("expected", "")),
                 )
             )
-            for system, score in (entry.get("scores") or {}).items():
-                repetitions = int((entry.get("repeats") or {}).get(system, 1))
+
+            scores = entry.get("scores", {})
+            if not isinstance(scores, dict):
+                raise ValueError(f"matrix items[{position}] scores must be an object")
+            repeats = entry.get("repeats", {})
+            if not isinstance(repeats, dict):
+                raise ValueError(f"matrix items[{position}] repeats must be an object")
+            for raw_system, score in scores.items():
+                system = _native_identifier(
+                    raw_system,
+                    "system",
+                    f"matrix items[{position}] score",
+                )
+                if system not in declared_systems:
+                    raise ValueError(
+                        f"matrix items[{position}] score has an undeclared system "
+                        "identifier"
+                    )
+                repetitions = int(repeats.get(raw_system, 1))
                 matrix.record(
-                    str(entry["id"]),
-                    str(system),
+                    item_id,
+                    system,
                     float(score),
                     repetitions=repetitions,
                 )
