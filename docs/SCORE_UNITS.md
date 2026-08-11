@@ -53,6 +53,9 @@ without resolving the ambiguity.
 ## Resulting contract
 
 - Finite scores from `0` through `1`, including fractional values: accepted.
+- In the versioned native matrix format, score values must be JSON numbers;
+  see [the native score-type contract](NATIVE_SCORE_TYPES.md). Generic CSV and
+  third-party JSON importers retain their compatibility coercion.
 - Booleans and documented pass/fail strings: converted to `0` or `1`.
 - Numeric values below `0`, above `1`, `NaN`, and infinity: exit `1` before a
   report is printed.

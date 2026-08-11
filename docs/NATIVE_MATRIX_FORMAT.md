@@ -75,6 +75,9 @@ code is copied or linked into EvalInt.
   echo the identifier, score, prompt, answer, or other row data.
 - Every `scores` key is a nonblank string already declared in `systems`. A typo
   cannot silently add another comparison target.
+- Every score value is a finite JSON number in `[0, 1]`; booleans, quoted
+  numbers, null, arrays, and objects fail instead of being coerced. See
+  [the native score-type contract](NATIVE_SCORE_TYPES.md).
 - `scores` and `repeats`, when present, are objects. Repeated measurements use
   the existing per-item `repeats` map written by `Matrix.as_dict()` rather than
   duplicate item or system entries. Repeat keys must have a corresponding score

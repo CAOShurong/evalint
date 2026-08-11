@@ -109,6 +109,16 @@ def _native_tags(entry: dict, location: str) -> tuple[str, ...]:
     return tuple(value)
 
 
+def _native_score(value, location: str) -> float:
+    """Validate a native JSON number without Python's broad coercions."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{location} must be a JSON number")
+    try:
+        return _unit_score(value)
+    except InvalidScore:
+        raise ValueError(f"{location} must be a finite JSON number in [0, 1]") from None
+
+
 class Matrix:
     """Item-by-system scores, plus the bookkeeping to keep them honest.
 
@@ -408,7 +418,7 @@ class Matrix:
                 matrix.record(
                     item_id,
                     system,
-                    float(score),
+                    _native_score(score, f"matrix items[{position}] score"),
                     repetitions=repeat_counts.get(system, 1),
                 )
         return matrix

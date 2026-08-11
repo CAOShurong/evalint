@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.21] - 2026-08-12
+
+### Fixed
+
+- Require score values in the native `evalint/matrix-v1` format to be JSON
+  numbers. Earlier releases silently turned booleans into 1/0 and quoted
+  numbers into floats, then used them in ordinary rankings and statistics.
+- Return a bounded item-position error for nonnumeric, nonfinite, or
+  out-of-range native scores without echoing the rejected value or labels.
+  Generic CSV and third-party import compatibility remains unchanged.
+
+### Added
+
+- Document numeric-type evidence, maintained strict-validation alternatives,
+  migration cost, and the limits of type and range validation.
+
 ## [0.2.20] - 2026-08-12
 
 ### Fixed

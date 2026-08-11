@@ -606,6 +606,76 @@ def test_native_matrix_accepts_omitted_and_explicit_empty_item_metadata():
 
 
 @pytest.mark.parametrize(
+    "score",
+    (
+        True,
+        False,
+        "1",
+        "0.25",
+        None,
+        [],
+        {},
+    ),
+)
+def test_native_matrix_refuses_non_numeric_json_scores(score):
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                "scores": {"alpha": score, "beta": 0},
+            }
+        ],
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(raw), "matrix")
+
+    assert "matrix items[1] score must be a JSON number" in str(caught.value)
+
+
+@pytest.mark.parametrize("score", (-0.01, 1.01, float("nan"), float("inf")))
+def test_native_matrix_bounds_invalid_numeric_scores_without_echoing_them(score):
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                "scores": {"alpha": score, "beta": 0},
+            }
+        ],
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(raw), "matrix")
+
+    assert "matrix items[1] score must be a finite JSON number in [0, 1]" in str(
+        caught.value
+    )
+    assert repr(score) not in str(caught.value)
+
+
+@pytest.mark.parametrize("score", (0, 0.0, 0.25, 1, 1.0))
+def test_native_matrix_accepts_unit_json_numbers(score):
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                "scores": {"alpha": score, "beta": 0},
+            }
+        ],
+    }
+
+    matrix, _ = parse_text(json.dumps(raw), "matrix")
+
+    assert matrix.score("q1", "alpha") == pytest.approx(float(score))
+
+
+@pytest.mark.parametrize(
     ("schema_fields", "problem"),
     (
         ({}, "schema is missing"),

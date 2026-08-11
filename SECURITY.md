@@ -98,6 +98,14 @@ single tag string from becoming character labels. Omitted properties keep their
 empty defaults. This type check does not prove that metadata is true, complete,
 correctly attached, or safe for a different display context; tags are not used
 by the current statistical audit.
+Native score values must be JSON numbers and must remain finite and within
+`[0, 1]`. Booleans, quoted numbers, null, arrays, and objects fail before they
+can affect rankings or statistics. Native score errors identify the item
+position without echoing the rejected value or labels. Generic third-party
+formats retain compatibility coercion because CSV lacks scalar types and some
+producers expose boolean pass flags. Numeric type and range validation does not
+authenticate the grader, prove the declared scale, prove independence, or show
+that any intended observation was supplied.
 
 Human-readable reports and CLI error details encode imported identifiers,
 system names, source paths, and other untrusted labels before writing them to
