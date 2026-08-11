@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-08-11
+
+### Fixed
+
+- Preserve identifiable CSV, JSONL, Promptfoo, and OpenAI Evals items even
+  when every score for an item is blank or unparseable. Earlier releases
+  removed those items from both the item count and the coverage denominator,
+  so a 3-item fixture with 3 of 6 valid cells reported 2 items and 75%
+  coverage instead of 3 items and 50% coverage.
+- Keep unparseable values missing rather than guessing that they are failures;
+  the item now remains visible so the existing sparse-coverage warning can do
+  its job.
+
+### Added
+
+- Document the scoreless-item import boundary, maintained alternatives, and
+  the identifiers that cannot be recovered from malformed rows.
+
 ## [0.2.5] - 2026-08-11
 
 ### Fixed

@@ -126,8 +126,10 @@ Missing scores remain missing rather than becoming failures. When systems were
 not scored on the same items, the text report shows the observed/expected cell
 coverage and warns that means and ranks use different denominators. JSON
 reports expose `observations`, `expected_observations`, and `coverage` in the
-summary. This warning does not impute data or make an incomplete comparison
-valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
+summary. An identifiable item remains in that denominator even when every one
+of its score values is blank or unparseable; earlier releases silently removed
+the whole item. This warning does not impute data or make an incomplete
+comparison valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
 
 ### In CI
 

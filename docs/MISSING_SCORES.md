@@ -10,18 +10,32 @@ with only 7 of 9 cells present, v0.2.3 printed `7 scores` and ranked system
 means that were computed over different item subsets. It did not show 7/9
 coverage or say those means were not directly comparable.
 
+There was a second false-negative in v0.2.4 and v0.2.5. Importers skipped a
+record before registering its item when the score was blank or unparseable.
+If every system lacked a usable score for one item, the item vanished from the
+denominator too. A public v0.2.5 CLI reproduction read a 3-item, 2-system CSV
+with 3 valid score cells but reported 2 items, 3/4 coverage (75%), and exit
+`0`; the faithful denominator is 3 items and 3/6 coverage (50%).
+
 Incomplete evaluation is a documented practical condition, not just a test
 fixture. Research on missing benchmark scores names cost, private systems,
-compute limits, and incomplete data as causes. Inspect's maintained eval suite
-uses an explicit `Score.unscored()` state for grader-instrument failures,
-excludes it from metrics, and records a reason; its metric utilities also have
-an explicit `on_missing="skip"` policy.
+compute limits, and incomplete data as causes. Inspect AI's maintainers and
+users have separately reproduced headline metrics that silently exclude
+errored or unscored samples: one open report shows 1 success and 9 errors
+appearing as accuracy 1.0, while another asks for scored/errored/unscored counts
+beside every headline metric. Promptfoo's maintained export documentation says
+error rows may lack grading details and deliberately keeps one JUnit test case
+per eval result so provider/runtime errors remain distinguishable from failed
+assertions. A practitioner report prompted Promptfoo to restore suppressed
+grading information after an external assertion raised.
 
 Sources:
 
 - [Towards More Robust NLP System Evaluation: Handling Missing Scores in Benchmarks](https://arxiv.org/abs/2305.10284)
-- [Inspect Evals changelog: unscored failures and explicit missing-score handling](https://github.com/UKGovernmentBEIS/inspect_evals/blob/main/CHANGELOG.md)
-- [Inspect scoring metrics](https://inspect.aisi.org.uk/metrics.html)
+- [Inspect AI issue 4286: metrics silently drop errored and unscored samples](https://github.com/UKGovernmentBEIS/inspect_ai/issues/4286)
+- [Inspect AI issue 4481: surface scored, errored, and unscored coverage](https://github.com/UKGovernmentBEIS/inspect_ai/issues/4481)
+- [Promptfoo output formats and error-row contract](https://www.promptfoo.dev/docs/configuration/outputs/)
+- [Promptfoo issue 827: an assertion error suppressed grading results](https://github.com/promptfoo/promptfoo/issues/827)
 
 ## Alternatives considered
 
@@ -33,11 +47,17 @@ Sources:
 | Complete-case ranking | Comparable subset, but may discard most data or leave too few items | Not silently selected. A future explicit mode could expose both the retained count and changed ranking. |
 | Imputation or partial-ranking aggregation | Research-backed methods exist, but add modeling assumptions and can invent values users mistake for observations | Not selected without an explicit user choice and validation data. |
 | Report exact coverage and a comparability warning | Zero dependencies; preserves observed data and existing output while exposing the limitation | Selected for v0.2.4. |
+| Drop an item when its last score is skipped | Existing v0.2.5 behavior; cheap, but shrinks both numerator and denominator and can make coverage look healthier | Rejected. Absence of every measurement is still evidence that the item was expected. |
+| Retain a recognizable item before parsing its score | Python standard library; no new dependency, account, or operating cost | Selected for v0.2.6 across long-form records, Promptfoo, and OpenAI Evals. Wide CSV already registered rows before scores. |
 
-Promptfoo, Inspect AI, and DeepEval remain full evaluation runners rather than
-drop-in auditors for arbitrary exported score matrices. Migrating to one can
-prevent or label some failures upstream, but it is a much larger change than
-making an existing export honest at read time.
+Promptfoo 0.122.0 and Inspect AI 0.3.255 were active, MIT-licensed projects when
+checked on 2026-08-11. They preserve richer producer-side error state, but they
+remain full evaluation runners rather than drop-in auditors for arbitrary
+exported score matrices. Promptfoo currently declares 80 direct npm runtime
+dependencies, while Inspect's PyPI metadata declares a broad Python dependency
+surface including extras. Migrating an existing evaluation pipeline to either
+is a much larger change than retaining an already-identifiable item at import.
+EvalInt's selected fix adds no runtime dependency.
 
 ## Resulting contract and limits
 
@@ -45,12 +65,19 @@ making an existing export honest at read time.
   incomplete and state that the ranking is not directly comparable.
 - JSON summaries always include the unique observation count, expected dense
   count, and coverage fraction.
+- CSV/JSONL records, Promptfoo results, and OpenAI Evals events register a
+  recognizable item before deciding whether its score is usable. A wholly
+  unscored item therefore stays in the item and coverage counts.
 - Raw repeated measurements remain separate from unique coverage cells.
 - No value is imputed, and missing never becomes zero.
 - Reliability continues to use only items observed for every system.
 
 The warning is intentionally conservative. It can report that subsets differ,
 but not whether the missingness changed the ranking or why a score is absent.
+An item without a recognizable id cannot be recovered. A system that never has
+one valid score is also not promoted into the statistical system list, because
+ranking a wholly unmeasured system as zero would repeat the error this boundary
+is meant to prevent. Those are false-negative limits, not clean-data claims.
 Conversely, complete coverage does not prove that every run was valid or that
 all systems received semantically identical inputs. Those require producer
 metadata and run-level validation outside EvalInt.

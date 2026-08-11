@@ -172,6 +172,67 @@ def test_an_unparseable_score_is_skipped_not_guessed():
     assert matrix.score("b", "y") == 1.0
 
 
+def test_a_wholly_unscored_long_form_item_still_counts_toward_coverage():
+    matrix, _ = load_text(
+        "item_id,system,score\n"
+        "q1,alpha,1\n"
+        "q1,beta,0\n"
+        "q2,alpha,n/a\n"
+        "q2,beta,1\n"
+        "q3,alpha,n/a\n"
+        "q3,beta,n/a\n"
+    )
+
+    assert matrix.item_ids == ["q1", "q2", "q3"]
+    assert matrix.observations == 3
+    assert matrix.density == pytest.approx(0.5)
+
+
+def test_promptfoo_keeps_a_test_case_when_its_graders_return_no_score():
+    payload = {
+        "results": [
+            {
+                "provider": "alpha",
+                "testCase": {"vars": {"case": "q1"}},
+                "score": 1,
+            },
+            {
+                "provider": "beta",
+                "testCase": {"vars": {"case": "q1"}},
+                "score": 0,
+            },
+            {
+                "provider": "alpha",
+                "testCase": {"vars": {"case": "q2"}},
+                "score": None,
+            },
+            {
+                "provider": "beta",
+                "testCase": {"vars": {"case": "q2"}},
+                "score": None,
+            },
+        ]
+    }
+
+    matrix, fmt = load_text(json.dumps(payload))
+    assert fmt == "promptfoo"
+    assert len(matrix.items) == 2
+    assert matrix.density == pytest.approx(0.5)
+
+
+def test_openai_evals_keeps_a_sample_when_the_grader_emits_no_score():
+    events = [
+        {"spec": {"completion_fns": ["alpha"]}},
+        {"sample_id": "q1", "type": "match", "data": {"correct": 1}},
+        {"sample_id": "q2", "type": "match", "data": {"prompt": "unscored"}},
+    ]
+
+    matrix, fmt = parse_text("\n".join(json.dumps(event) for event in events))
+    assert fmt == "openai-evals"
+    assert matrix.item_ids == ["q1", "q2"]
+    assert matrix.observations == 1
+
+
 @pytest.mark.parametrize("raw", ["1.01", "-0.01", "nan", "inf", "-inf"])
 def test_a_score_outside_the_declared_unit_range_is_refused(raw):
     text = f"item_id,system,score\na,x,{raw}\na,y,1\n"

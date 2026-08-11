@@ -108,6 +108,26 @@ def test_json_output_parses(tmp_path, capsys):
     assert payload["summary"]["systems"] == 4
 
 
+def test_json_coverage_includes_items_with_no_valid_scores(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        "item_id,system,score\n"
+        "q1,alpha,1\n"
+        "q1,beta,0\n"
+        "q2,alpha,n/a\n"
+        "q2,beta,1\n"
+        "q3,alpha,n/a\n"
+        "q3,beta,n/a\n",
+    )
+
+    assert main([str(path), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["summary"]["items"] == 3
+    assert payload["summary"]["observations"] == 3
+    assert payload["summary"]["expected_observations"] == 6
+    assert payload["summary"]["coverage"] == pytest.approx(0.5)
+
+
 def test_invalid_repeat_metadata_is_a_user_error_not_a_traceback(tmp_path, capsys):
     payload = {
         "schema": "evalint/matrix-v1",
