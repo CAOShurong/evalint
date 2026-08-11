@@ -491,6 +491,51 @@ def test_native_matrix_refuses_ambiguous_identifiers(raw, problem):
     assert problem in str(caught.value)
 
 
+@pytest.mark.parametrize(
+    ("repeats", "scores", "problem"),
+    (
+        ({"alpha": 2.9}, {"alpha": 1, "beta": 0}, "positive integer"),
+        ({"alpha": "3"}, {"alpha": 1, "beta": 0}, "positive integer"),
+        ({"alpha": True}, {"alpha": 1, "beta": 0}, "positive integer"),
+        ({"alpha": 0}, {"alpha": 1, "beta": 0}, "positive integer"),
+        ({"alpha": float("nan")}, {"alpha": 1, "beta": 0}, "positive integer"),
+        ({"": 2}, {"alpha": 1, "beta": 0}, "blank system identifier"),
+        ({"typo": 99}, {"alpha": 1, "beta": 0}, "undeclared system"),
+        ({"beta": 99}, {"alpha": 1}, "has no corresponding score"),
+    ),
+)
+def test_native_matrix_refuses_lossy_repeat_metadata(repeats, scores, problem):
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [{"id": "q1", "scores": scores, "repeats": repeats}],
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(raw), "matrix")
+
+    assert problem in str(caught.value)
+
+
+def test_native_matrix_accepts_integer_valued_json_repeat_numbers():
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                "scores": {"alpha": 1, "beta": 0},
+                "repeats": {"alpha": 2.0},
+            }
+        ],
+    }
+
+    matrix, _ = parse_text(json.dumps(raw), "matrix")
+
+    assert matrix.repetitions("q1", "alpha") == 2
+    assert matrix.measurements == 3
+
+
 def test_a_missing_file_raises_with_the_path():
     with pytest.raises(ImportError_) as caught:
         load(pathlib.Path("nowhere-at-all.csv"))

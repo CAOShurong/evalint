@@ -71,7 +71,9 @@ code is copied or linked into EvalInt.
   cannot silently add another comparison target.
 - `scores` and `repeats`, when present, are objects. Repeated measurements use
   the existing per-item `repeats` map written by `Matrix.as_dict()` rather than
-  duplicate item or system entries.
+  duplicate item or system entries. Repeat keys must have a corresponding score
+  and positive integer-valued count; see
+  [the repeat metadata contract](NATIVE_REPEAT_METADATA.md).
 - Nonblank whitespace is preserved exactly. The reader validates identity but
   does not normalize names or merge spelling variants.
 - Import errors are wrapped as bounded `invalid evalint matrix` messages. The

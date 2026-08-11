@@ -65,6 +65,22 @@ def _native_identifier(value, kind: str, location: str) -> str:
     return value
 
 
+def _native_repeat_count(value, location: str) -> int:
+    """Validate a raw-measurement count without lossy numeric coercion."""
+    if isinstance(value, bool):
+        raise ValueError(f"{location} count must be a positive integer")
+    if isinstance(value, int):
+        count = value
+    elif isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        # JSON Schema treats 2 and 2.0 as the same integer-valued JSON number.
+        count = int(value)
+    else:
+        raise ValueError(f"{location} count must be a positive integer")
+    if count < 1:
+        raise ValueError(f"{location} count must be a positive integer")
+    return count
+
+
 class Matrix:
     """Item-by-system scores, plus the bookkeeping to keep them honest.
 
@@ -319,6 +335,26 @@ class Matrix:
             repeats = entry.get("repeats", {})
             if not isinstance(repeats, dict):
                 raise ValueError(f"matrix items[{position}] repeats must be an object")
+            repeat_counts: dict[str, int] = {}
+            for raw_system, value in repeats.items():
+                system = _native_identifier(
+                    raw_system,
+                    "system",
+                    f"matrix items[{position}] repeat",
+                )
+                if system not in declared_systems:
+                    raise ValueError(
+                        f"matrix items[{position}] repeat has an undeclared system "
+                        "identifier"
+                    )
+                if raw_system not in scores:
+                    raise ValueError(
+                        f"matrix items[{position}] repeat has no corresponding score"
+                    )
+                repeat_counts[system] = _native_repeat_count(
+                    value,
+                    f"matrix items[{position}] repeat",
+                )
             for raw_system, score in scores.items():
                 system = _native_identifier(
                     raw_system,
@@ -330,12 +366,11 @@ class Matrix:
                         f"matrix items[{position}] score has an undeclared system "
                         "identifier"
                     )
-                repetitions = int(repeats.get(raw_system, 1))
                 matrix.record(
                     item_id,
                     system,
                     float(score),
-                    repetitions=repetitions,
+                    repetitions=repeat_counts.get(system, 1),
                 )
         return matrix
 

@@ -159,9 +159,12 @@ See [`docs/REQUIRED_IDENTIFIERS.md`](docs/REQUIRED_IDENTIFIERS.md).
 EvalInt's native `evalint/matrix-v1` format additionally requires unique,
 nonblank string item and system identifiers. Its score keys must name systems
 declared in the top-level array, so duplicate names and typos cannot add fake
-comparison columns or repeated items. Existing repeated measurements remain
-represented by the per-cell `repeats` object. See
-[`docs/NATIVE_MATRIX_FORMAT.md`](docs/NATIVE_MATRIX_FORMAT.md).
+comparison columns or repeated items. Per-cell `repeats` keys must also name a
+declared system with a score on that item, and their counts must be positive
+integer-valued JSON numbers; fractional, quoted, boolean, orphaned, and typoed
+counts fail rather than being truncated or discarded. See
+[`docs/NATIVE_MATRIX_FORMAT.md`](docs/NATIVE_MATRIX_FORMAT.md) and
+[`docs/NATIVE_REPEAT_METADATA.md`](docs/NATIVE_REPEAT_METADATA.md).
 
 Path-based parse errors name the failing input as well as the record location.
 When auto-detected files use more than one representation, JSON reports use a
