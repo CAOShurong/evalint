@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18] - 2026-08-12
+
+### Fixed
+
+- Validate native `repeats` maps before recording an item: each key must be a
+  declared system with a score on that item, and each count must be a positive
+  integer-valued JSON number. Earlier releases silently truncated fractional
+  counts, coerced quoted counts, and discarded unmatched or typoed counts
+  while returning an ordinary report.
+
+### Added
+
+- Document the repeat-count contract, reproduced measurement/run-count errors,
+  maintained validation alternatives, migration cost, and the limits of
+  structural validation.
+
 ## [0.2.17] - 2026-08-12
 
 ### Fixed
@@ -356,3 +372,4 @@ First release.
 [0.2.15]: https://github.com/CAOShurong/evalint/compare/v0.2.14...v0.2.15
 [0.2.16]: https://github.com/CAOShurong/evalint/compare/v0.2.15...v0.2.16
 [0.2.17]: https://github.com/CAOShurong/evalint/compare/v0.2.16...v0.2.17
+[0.2.18]: https://github.com/CAOShurong/evalint/compare/v0.2.17...v0.2.18

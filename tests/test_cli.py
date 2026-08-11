@@ -248,6 +248,27 @@ def test_invalid_repeat_metadata_is_a_user_error_not_a_traceback(tmp_path, capsy
     assert "Traceback" not in error
 
 
+def test_fractional_repeat_metadata_is_not_silently_truncated(tmp_path, capsys):
+    payload = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                "scores": {"alpha": 1, "beta": 0},
+                "repeats": {"alpha": 2.9},
+            }
+        ],
+    }
+    path = _write(tmp_path, json.dumps(payload), "fractional-repeats.json")
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "positive integer" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_save_reduced_writes_one_id_per_line(tmp_path, capsys):
     out = tmp_path / "keep.txt"
     main([str(_write(tmp_path, HEALTHY)), "--save-reduced", str(out)])

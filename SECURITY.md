@@ -80,8 +80,12 @@ The native `evalint/matrix-v1` reader also refuses duplicate, null, blank, or
 non-string item and system identities, and refuses score keys that are absent
 from its declared system array. This prevents a malformed round-trip artifact
 from manufacturing duplicate comparison columns or silently expanding the
-comparison set. Exact spelling variants remain distinct, and a valid structure
-does not authenticate a system or prove statistical independence.
+comparison set. Repeat metadata must use a declared system that has a score on
+the same item, and counts must be positive integer-valued JSON numbers. This
+prevents fractional counts from being truncated and unmatched counts from
+being silently discarded. Exact spelling variants remain distinct, counts are
+not authenticated against source runs, and a valid structure does not prove
+statistical independence, completeness, provenance, or correct aggregation.
 
 Human-readable reports and CLI error details encode imported identifiers,
 system names, source paths, and other untrusted labels before writing them to
