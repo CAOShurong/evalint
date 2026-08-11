@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.23] - 2026-08-12
+
+### Fixed
+
+- Reject generic JSON/JSONL records when different inspected paths expose
+  conflicting values for the same recognized item, system, score, text, or
+  expected-answer field. Earlier releases let nested traversal order change a
+  score, ranking, and item diagnosis while returning exit `0`.
+- Detect case variants and collisions between direct names and constructed
+  flattened paths, while preserving identical same-type values and ignoring
+  conflicts between metadata fields that EvalInt does not consume.
+- Return a bounded record-location error with empty report output and no
+  traceback, without echoing field names, paths, values, or eval content.
+
+### Added
+
+- Document the public order-dependent reproduction, maintained alternatives,
+  migration cost, false positives, false negatives, and validation limits.
+
 ## [0.2.22] - 2026-08-12
 
 ### Fixed

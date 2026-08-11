@@ -78,6 +78,16 @@ member instead. This check cannot detect duplicates already collapsed by an
 upstream parser, semantic aliases, duplicate records, or false content, and it
 does not authenticate the source or prove completeness.
 
+The generic JSON/JSONL flattener also refuses different scalar values that
+distinct inspected paths expose under the same recognized item, system, score,
+text, or expected-answer name. Matching is case-insensitive, as field lookup
+already is, and full flattened paths can conflict with direct fields. The
+error names only the record location; it does not echo either path, name, or
+value. Exact same-type/same-value repetitions remain accepted, while conflicts
+between unconsumed metadata are ignored. This boundary does not infer that two
+different aliases are semantically the same, inspect arbitrary depth or arrays,
+authenticate a producer, or prove that the selected field is true.
+
 Generic JSON/JSONL and CSV records fail closed when a required item or system
 identifier is missing, null, empty, or whitespace-only. EvalInt does not invent
 an identity from a row number and does not silently skip the record. Valid

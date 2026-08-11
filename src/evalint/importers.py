@@ -41,6 +41,10 @@ class _DuplicateJsonMember(ValueError):
     """A JSON object repeated a member name, making its meaning ambiguous."""
 
 
+class _ConflictingFlattenedField(ValueError):
+    """Distinct nested paths would expose one leaf name with different values."""
+
+
 def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     """Build one object while rejecting names a normal ``dict`` would lose."""
     result: dict[str, object] = {}
@@ -94,6 +98,11 @@ SCORE_KEYS = (
 #: Column names carrying the prompt text, for duplicate detection.
 TEXT_KEYS = ("text", "question", "input", "prompt", "query", "instruction")
 EXPECTED_KEYS = ("expected", "expected_output", "reference", "answer", "target")
+GENERIC_FIELD_KEYS = frozenset(
+    key
+    for keys in (ITEM_KEYS, SYSTEM_KEYS, SCORE_KEYS, TEXT_KEYS, EXPECTED_KEYS)
+    for key in keys
+)
 
 
 def _as_score(value) -> float | None:
@@ -509,7 +518,13 @@ def _from_records(records: list[object], locations: list[str] | None = None) -> 
         )
         if not isinstance(record, dict):
             raise ImportError_(f"{location} must be a JSON object")
-        flat = _flatten(record)
+        try:
+            flat = _flatten(record)
+        except _ConflictingFlattenedField as exc:
+            raise ImportError_(
+                f"{location} has conflicting nested JSON field values; "
+                "use one unambiguous value or a schema-specific format"
+            ) from exc
         item_key = _first(flat, ITEM_KEYS)
         system_key = _first(flat, SYSTEM_KEYS)
         score_key = _first(flat, SCORE_KEYS)
@@ -534,27 +549,51 @@ def _from_records(records: list[object], locations: list[str] | None = None) -> 
     return matrix
 
 
-def _flatten(record: dict, prefix: str = "", depth: int = 0) -> dict:
+def _flatten(
+    record: dict,
+    prefix: str = "",
+    depth: int = 0,
+    _out=None,
+    _recognized=None,
+) -> dict:
     """One level of nesting folded into ``parent_child`` keys.
 
     Result files nest the interesting fields one or two levels down -- under
     ``data``, ``testCase``, ``metadata`` -- and flattening lets the same key
     matching work on all of them without a schema per tool.
     """
-    out: dict = {}
+    if _out is None:
+        _out = {}
+    if _recognized is None:
+        _recognized = {}
     if depth > 2:
-        return out
+        return _out
     for key, value in record.items():
         name = f"{prefix}{key}"
         if isinstance(value, dict):
-            out.update(_flatten(value, f"{name}_", depth + 1))
+            _flatten(value, f"{name}_", depth + 1, _out, _recognized)
             continue
         if isinstance(value, (str, int, float, bool)) or value is None:
-            out.setdefault(name, value)
+            _set_flattened_field(_out, _recognized, name, value)
             # Also expose the bare leaf name, so `data_correct` matches the
             # `correct` key without needing to know it was nested.
-            out.setdefault(key, value)
-    return out
+            _set_flattened_field(_out, _recognized, key, value)
+    return _out
+
+
+def _set_flattened_field(out: dict, recognized: dict, name: str, value) -> None:
+    """Reject conflicts only for names the generic importer may consume."""
+    canonical = name.lower()
+    if canonical in GENERIC_FIELD_KEYS:
+        if canonical in recognized:
+            existing = recognized[canonical]
+            if type(existing) is not type(value) or existing != value:
+                raise _ConflictingFlattenedField
+        else:
+            recognized[canonical] = value
+    if name in out:
+        return
+    out[name] = value
 
 
 def _read_promptfoo(text: str) -> Matrix:

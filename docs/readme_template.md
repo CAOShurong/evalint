@@ -154,6 +154,12 @@ Every JSON object must also use each exact member name at most once. Repeating
 replace the earlier one. The same field names remain valid in separate objects;
 see [`docs/DUPLICATE_JSON_MEMBERS.md`](docs/DUPLICATE_JSON_MEMBERS.md).
 
+In generic JSON/JSONL, two nested paths must not expose different values for
+the same recognized item, system, score, text, or expected-answer field. Such
+a conflict fails with its record location instead of letting traversal order
+change the audit; unrelated metadata conflicts remain ignored. See
+[`docs/NESTED_FIELD_CONFLICTS.md`](docs/NESTED_FIELD_CONFLICTS.md).
+
 Generic JSON/JSONL and CSV records must name both the item and system they
 measure. Missing, null, empty, or whitespace-only identifiers exit `1` with a
 bounded record location instead of being skipped, merged under `"None"`, or

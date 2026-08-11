@@ -370,6 +370,79 @@ def test_json_reader_allows_the_same_member_name_in_separate_objects():
     assert matrix.scores_for_system("beta") == {"q1": 0.0}
 
 
+@pytest.mark.parametrize(
+    ("text", "location"),
+    (
+        (
+            '[{"item_id":"q1","system":"alpha",'
+            '"grader":{"score":1},"metadata":{"score":0}},'
+            '{"item_id":"q1","system":"beta","score":1}]',
+            "JSON array record 1",
+        ),
+        (
+            '[{"item_id":"q1","system":"alpha",'
+            '"metadata":{"score":0},"grader":{"score":1}},'
+            '{"item_id":"q1","system":"beta","score":1}]',
+            "JSON array record 1",
+        ),
+        (
+            '{"item_id":"q1","system":"alpha","score":1}\n'
+            '{"item_id":"q1","system":"beta","score":0,'
+            '"data":{"score":1}}',
+            "JSONL line 2",
+        ),
+        (
+            '[{"item_id":"q1","system":"alpha",'
+            '"item":{"id":"q2"},"score":1},'
+            '{"item_id":"q1","system":"beta","score":0}]',
+            "JSON array record 1",
+        ),
+        (
+            '[{"item_id":"q1","system":"alpha",'
+            '"grader":{"score":true},"metadata":{"score":1}},'
+            '{"item_id":"q1","system":"beta","score":0}]',
+            "JSON array record 1",
+        ),
+        (
+            '[{"item_id":"q1","system":"alpha","Score":1,"score":0},'
+            '{"item_id":"q1","system":"beta","score":1}]',
+            "JSON array record 1",
+        ),
+    ),
+)
+def test_generic_json_refuses_conflicting_nested_leaf_values(text, location):
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "jsonl")
+
+    message = str(caught.value)
+    assert location in message
+    assert "conflicting nested JSON field values" in message
+
+
+def test_generic_json_allows_repeated_nested_leaf_values_when_identical():
+    matrix, _ = parse_text(
+        '[{"item_id":"q1","system":"alpha",'
+        '"grader":{"score":1},"metadata":{"score":1}},'
+        '{"item_id":"q1","system":"beta","score":0}]',
+        "jsonl",
+    )
+
+    assert matrix.scores_for_system("alpha") == {"q1": 1.0}
+    assert matrix.scores_for_system("beta") == {"q1": 0.0}
+
+
+def test_generic_json_ignores_conflicts_between_unconsumed_nested_fields():
+    matrix, _ = parse_text(
+        '[{"item_id":"q1","system":"alpha","score":1,'
+        '"grader":{"unused":1},"metadata":{"unused":0}},'
+        '{"item_id":"q1","system":"beta","score":0}]',
+        "jsonl",
+    )
+
+    assert matrix.scores_for_system("alpha") == {"q1": 1.0}
+    assert matrix.scores_for_system("beta") == {"q1": 0.0}
+
+
 # -- an unreadable file must raise, never return nothing ------------------
 
 

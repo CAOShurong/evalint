@@ -206,6 +206,22 @@ def test_duplicate_json_member_exits_one_without_a_report(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+def test_conflicting_nested_json_fields_exit_one_without_a_report(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        '[{"item_id":"q1","system":"alpha",'
+        '"grader":{"score":1},"metadata":{"score":0}},'
+        '{"item_id":"q1","system":"beta","score":1}]',
+        "conflicting-nested-score.json",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "conflicting nested JSON field values" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(
