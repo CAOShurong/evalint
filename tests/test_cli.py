@@ -189,6 +189,23 @@ def test_boolean_native_score_exits_one_without_a_report(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+def test_duplicate_json_member_exits_one_without_a_report(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        '{"schema":"evalint/matrix-v2","schema":"evalint/matrix-v1",'
+        '"systems":["alpha","beta"],"items":['
+        '{"id":"q1","scores":{"alpha":1,"beta":0}},'
+        '{"id":"q2","scores":{"alpha":0,"beta":1}}]}',
+        "duplicate-schema.json",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "duplicate object member" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(

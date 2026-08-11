@@ -313,6 +313,63 @@ def test_openai_evals_does_not_skip_a_malformed_event_line():
     assert "line 3" in message
 
 
+@pytest.mark.parametrize(
+    ("text", "fmt", "location"),
+    (
+        (
+            '{"schema":"evalint/matrix-v2","schema":"evalint/matrix-v1",'
+            '"systems":["alpha","beta"],"items":[{"id":"q1",'
+            '"scores":{"alpha":1,"beta":0}}]}',
+            "matrix",
+            "invalid evalint matrix",
+        ),
+        (
+            '[{"item_id":"q1","system":"alpha","score":1,"score":0},'
+            '{"item_id":"q1","system":"beta","score":1}]',
+            "jsonl",
+            "invalid JSON array JSON",
+        ),
+        (
+            '{"item_id":"q1","system":"alpha","score":1}\n'
+            '{"item_id":"q1","system":"beta","score":1,"score":0}',
+            "jsonl",
+            "invalid JSONL JSON on line 2",
+        ),
+        (
+            '{"results":[{"provider":"alpha","score":1,"score":0,'
+            '"prompt":{"raw":"q1"}}]}',
+            "promptfoo",
+            "invalid Promptfoo JSON",
+        ),
+        (
+            '{"spec":{"completion_fns":["alpha"]}}\n'
+            '{"sample_id":"q1","type":"match",'
+            '"data":{"correct":1,"correct":0}}',
+            "openai-evals",
+            "invalid OpenAI Evals JSON on line 2",
+        ),
+    ),
+)
+def test_json_readers_refuse_duplicate_object_members(text, fmt, location):
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, fmt)
+
+    message = str(caught.value)
+    assert location in message
+    assert "duplicate object member" in message
+
+
+def test_json_reader_allows_the_same_member_name_in_separate_objects():
+    matrix, _ = parse_text(
+        '[{"item_id":"q1","system":"alpha","score":1},'
+        '{"item_id":"q1","system":"beta","score":0}]',
+        "jsonl",
+    )
+
+    assert matrix.scores_for_system("alpha") == {"q1": 1.0}
+    assert matrix.scores_for_system("beta") == {"q1": 0.0}
+
+
 # -- an unreadable file must raise, never return nothing ------------------
 
 

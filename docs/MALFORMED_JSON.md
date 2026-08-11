@@ -57,3 +57,7 @@ still receive the generic "could not recognise" error because no valid shape
 exists to identify it as JSONL. Syntax validity also does not prove schema or
 semantic correctness: a valid JSON object can still name the wrong item,
 system, or score. Those are separate import and producer-validation boundaries.
+Repeated object member names are a separate structural ambiguity: a parser may
+accept them even though implementations disagree about which value survives.
+EvalInt rejects them at decode time; see
+[the duplicate-member contract](DUPLICATE_JSON_MEMBERS.md).
