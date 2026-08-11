@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.28] - 2026-08-12
+
+### Fixed
+
+- Treat Promptfoo `failureReason=2` provider, grader, and runtime errors as
+  missing measurements instead of observed zero scores, preventing errored
+  systems from receiving a plausible ranking with false full coverage.
+- Preserve `failureReason=1` assertion failures as real observed scores and
+  keep current results without a failure reason on their legacy path.
+- Reject a present invalid Promptfoo `failureReason` with a bounded message
+  that does not echo the value or the producer's error details.
+
+### Added
+
+- Document a real local provider-error reproduction, maintained alternatives,
+  coverage behavior, migration boundary, and false-positive/false-negative
+  limits.
+
 ## [0.2.27] - 2026-08-12
 
 ### Fixed

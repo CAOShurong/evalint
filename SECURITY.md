@@ -98,6 +98,18 @@ their hidden configuration is identical. EvalInt does not authenticate these
 identifiers, inspect credentials or configuration, or prove that the producer's
 identity assignment was correct.
 
+Promptfoo's current `failureReason=2` error rows register their item and system
+but do not contribute the producer's synthetic zero score. This prevents a
+provider, grader, or runtime failure from becoming an answer-quality failure;
+a wholly errored system is refused, and a partial error appears as incomplete
+coverage. Assertion failures marked `failureReason=1` remain observed scores.
+A present reason must be the integer `0`, `1`, or `2`; invalid values fail
+without being echoed, and the producer's error text is never copied into a
+report or diagnostic. Results with no reason retain legacy score handling.
+This distinction trusts the producer marker: a missing or incorrect marker can
+still misclassify an error, and a clean audit does not prove that providers or
+graders completed successfully outside the supplied rows.
+
 JSON that exceeds Python's safe decoder nesting boundary also fails with a
 bounded import error across automatic detection and every JSON reader, without
 echoing input content or printing a traceback. EvalInt does not raise the
