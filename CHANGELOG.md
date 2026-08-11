@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] - 2026-08-11
+
+### Fixed
+
+- Render imported system names, item ids, path labels, warnings, and error
+  details as inert single-line text before writing a human-readable terminal
+  report. Control characters such as ANSI clear-screen, cursor-positioning,
+  hyperlink, newline, and bidirectional overrides are now shown as visible
+  escape spellings instead of being interpreted by the terminal.
+- Preserve EvalInt's own trusted colour sequences while escaping only data
+  labels. `--color never` emits no ESC bytes, and `--ascii` also escapes
+  non-ASCII labels.
+- Keep machine-readable JSON lossless: imported labels remain unchanged in
+  structured output rather than being silently rewritten in the data model.
+
+### Added
+
+- Document the terminal-output trust boundary, the reproduced v0.2.13
+  behavior, rejected dependency and blanket-stripping alternatives, and the
+  distinction between safe display text and unchanged JSON data.
+
 ## [0.2.13] - 2026-08-11
 
 ### Fixed
@@ -278,3 +299,4 @@ First release.
 [0.2.11]: https://github.com/CAOShurong/evalint/compare/v0.2.10...v0.2.11
 [0.2.12]: https://github.com/CAOShurong/evalint/compare/v0.2.11...v0.2.12
 [0.2.13]: https://github.com/CAOShurong/evalint/compare/v0.2.12...v0.2.13
+[0.2.14]: https://github.com/CAOShurong/evalint/compare/v0.2.13...v0.2.14

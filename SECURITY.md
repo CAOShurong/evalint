@@ -59,6 +59,18 @@ bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.
 Promptfoo JSON syntax errors use the same no-traceback boundary.
 
+Human-readable reports and CLI error details encode imported identifiers,
+system names, source paths, and other untrusted labels before writing them to
+the terminal. Non-printable Unicode and control characters are emitted as
+visible Python-style escape spellings, so input data cannot supply an ANSI
+clear-screen, cursor movement, hyperlink, injected line, or bidirectional
+override. EvalInt's own colour sequences are generated separately from this
+data boundary. Machine-readable JSON deliberately retains the original label
+strings; consumers that later display those strings must apply the encoding
+appropriate to their own output context. This is terminal-output
+neutralization, not input authentication or a promise that every terminal
+emulator is free of vulnerabilities.
+
 Path and format labels provide diagnostic provenance only. They do not hash,
 sign, archive, or authenticate an input, and a successful report does not
 prove that the named files are the producer's original exports. Mixed-format

@@ -105,6 +105,43 @@ def test_ascii_mode_emits_no_characters_a_dumb_terminal_cannot_show():
     assert out.isascii()
 
 
+def test_untrusted_labels_cannot_inject_terminal_controls():
+    matrix = grid(
+        {"a": "10", "b": "10"},
+        systems=["alpha\x1b[2J\x1b[HFORGED-RANK", "beta"],
+    )
+    audit = audit_matrix(
+        matrix,
+        source="results\x1b]8;;https://example.invalid\x07",
+    )
+
+    out = render(audit, Palette("never"))
+
+    assert "\x1b" not in out
+    assert "\x07" not in out
+    assert r"results\x1b]8;;https://example.invalid\x07" in out
+    assert r"alpha\x1b[2J\x1b[HFORGED-RANK" in out
+
+    coloured = render(audit, Palette("always"))
+    assert "\x1b[2J" not in coloured
+    assert "\x1b[1m" in coloured
+    assert r"alpha\x1b[2J\x1b[HFORGED-RANK" in coloured
+
+
+def test_ascii_mode_escapes_non_ascii_labels_instead_of_leaking_them():
+    matrix = grid(
+        {"a": "10", "b": "10"},
+        systems=["mod\N{LATIN SMALL LETTER E WITH ACUTE}le", "beta"],
+    )
+    audit = audit_matrix(matrix, source="r\N{LATIN SMALL LETTER E WITH ACUTE}sultats")
+
+    out = render(audit, Palette("never"), ascii_only=True)
+
+    assert out.isascii()
+    assert r"r\xe9sultats" in out
+    assert r"mod\xe9le" in out
+
+
 def test_colour_is_off_when_asked_and_on_when_asked():
     matrix = grid({f"i-{n:02d}": "1110" if n % 3 else "1100" for n in range(12)})
     audit = audit_matrix(matrix)

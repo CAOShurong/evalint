@@ -176,6 +176,14 @@ failed. Distinct, so a pipeline can tell them apart.
 evalint results.csv --json | jq '.summary.reliability'
 ```
 
+Human-readable output treats imported labels and path/error details as
+untrusted terminal text. Control characters are displayed as visible escape
+spellings, while EvalInt's own optional colours still work; `--color never`
+emits no ESC bytes. JSON output retains the original strings for downstream
+tools rather than mutating the data. See
+[`docs/TERMINAL_OUTPUT.md`](docs/TERMINAL_OUTPUT.md) for the observed failure,
+selected boundary, and limitations.
+
 To save the reduced set's item ids, choose a separate output path:
 
 ```bash

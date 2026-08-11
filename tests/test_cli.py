@@ -265,6 +265,40 @@ def test_color_never_emits_no_escapes(tmp_path, capsys):
     assert "\x1b[" not in capsys.readouterr().out
 
 
+def test_input_system_cannot_inject_terminal_controls(tmp_path, capsys):
+    records = [
+        {"item_id": item, "system": system, "score": score}
+        for item in ("q1", "q2")
+        for system, score in (("alpha\x1b[2J\x1b[HFORGED-RANK", 1), ("beta", 0))
+    ]
+    path = _write(
+        tmp_path,
+        "\n".join(json.dumps(record) for record in records) + "\n",
+        "untrusted-label.jsonl",
+    )
+
+    assert main([str(path), "--color", "never"]) == 0
+    output = capsys.readouterr().out
+    assert "\x1b" not in output
+    assert r"alpha\x1b[2J\x1b[HFORGED-RANK" in output
+
+    assert main([str(path), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ranking"][0]["system"] == "alpha\x1b[2J\x1b[HFORGED-RANK"
+
+
+def test_import_error_controls_are_visible_text_not_terminal_commands(
+    tmp_path, capsys, monkeypatch
+):
+    def fail_import(_paths, _format):
+        raise cli_module.ImportError_("bad\x1b[2J\nFORGED-ERROR")
+
+    monkeypatch.setattr(cli_module, "load_many", fail_import)
+
+    assert main([str(tmp_path / "input.jsonl")]) == 1
+    assert capsys.readouterr().err == r"evalint: bad\x1b[2J\nFORGED-ERROR" + "\n"
+
+
 def test_the_format_flag_is_accepted_before_and_after_the_path(tmp_path, capsys):
     """A flag that only works on one side of the filename is a flag that is
     broken for half the people who read the README."""
