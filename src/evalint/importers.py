@@ -181,12 +181,21 @@ def _looks_like_csv(text: str) -> bool:
     which sends the reader looking for a problem in a file that was never the
     right kind of file.
     """
-    lines = [line for line in text.splitlines() if line.strip()][:5]
-    if len(lines) < 2:
-        return False
     for delimiter in (",", "\t", ";", "|"):
-        counts = {line.count(delimiter) for line in lines}
-        if counts and min(counts) >= 1 and len(counts) == 1:
+        rows: list[list[str]] = []
+        reader = csv.reader(io.StringIO(text), delimiter=delimiter, strict=True)
+        try:
+            for row in reader:
+                if any(cell.strip() for cell in row):
+                    rows.append(row)
+                if len(rows) == 5:
+                    break
+        except csv.Error:
+            continue
+        if len(rows) < 2 or len(rows[0]) < 2:
+            continue
+        width = len(rows[0])
+        if all(len(row) == width for row in rows[1:]):
             return True
     return False
 
@@ -580,8 +589,24 @@ def _read_csv(text: str) -> Matrix:
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
     except csv.Error:
         dialect = csv.excel
-    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
-    rows = [row for row in reader if any((v or "").strip() for v in row.values())]
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect, strict=True)
+    rows: list[dict] = []
+    try:
+        for row in reader:
+            extras = row.get(None)
+            if extras is not None:
+                count = len(extras)
+                suffix = "" if count == 1 else "s"
+                raise ImportError_(
+                    f"CSV row near line {reader.line_num} has {count} extra "
+                    f"field{suffix}"
+                )
+            if any((value or "").strip() for value in row.values()):
+                rows.append(row)
+    except csv.Error as exc:
+        raise ImportError_(
+            f"CSV syntax error near line {reader.line_num}: {exc}"
+        ) from exc
     if not rows:
         return Matrix()
 
