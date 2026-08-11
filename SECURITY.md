@@ -23,6 +23,15 @@ symbolic-link, and hard-link aliases of every input. A complete sibling
 temporary file is flushed before `os.replace`; write failures leave an
 existing output intact and return exit `1` without a traceback.
 
+Plain reduced-id output is one logical id per physical line. If a kept id
+contains any line boundary recognized by Python, EvalInt refuses the write
+before creating a temporary file; it does not split the id or replace an
+existing destination. `--save-reduced-format jsonl` losslessly represents
+arbitrary string ids as JSON strings, including embedded line breaks and NUL.
+Consumers must parse that format as JSON data rather than execute it. A clean
+serialization does not prove the ids still resolve in another dataset or that
+the reduction is statistically appropriate for a later run.
+
 Input files are still untrusted data. The current importers read a complete
 file into memory, so a very large or deliberately hostile file can exhaust
 memory or CPU. Run untrusted inputs with operating-system resource limits in a

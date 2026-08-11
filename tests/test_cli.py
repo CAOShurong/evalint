@@ -24,6 +24,28 @@ HEALTHY = "item_id,text,system,score\n" + "".join(
 )
 
 
+def _matrix_with_multiline_ids() -> str:
+    systems = ["alpha", "beta", "gamma", "delta"]
+    items = []
+    for number in range(12):
+        scores = {
+            "alpha": 1,
+            "beta": 0 if number % 4 == 0 else 1,
+            "gamma": 0 if number % 2 == 0 else 1,
+            "delta": 1 if number % 6 == 0 else 0,
+        }
+        items.append(
+            {
+                "id": f"q{number:02d}\nvariant",
+                "text": f"distinct topic {number}",
+                "scores": scores,
+            }
+        )
+    return json.dumps(
+        {"schema": "evalint/matrix-v1", "systems": systems, "items": items}
+    )
+
+
 def _write(tmp_path, text, name="results.csv"):
     path = tmp_path / name
     path.write_text(text, encoding="utf-8")
@@ -253,6 +275,88 @@ def test_save_reduced_preserves_an_existing_output_when_replace_fails(
         "keep.txt",
         "results.csv",
     ]
+
+
+def test_save_reduced_lines_refuses_an_id_that_would_split_a_record(tmp_path, capsys):
+    source = _write(tmp_path, _matrix_with_multiline_ids(), "results.json")
+    output = tmp_path / "keep.txt"
+    output.write_text("previous output\n", encoding="utf-8")
+
+    assert main([str(source), "--save-reduced", str(output), "--json"]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "line break" in captured.err
+    assert "jsonl" in captured.err
+    assert "Traceback" not in captured.err
+    assert output.read_text(encoding="utf-8") == "previous output\n"
+
+
+def test_save_reduced_jsonl_round_trips_multiline_ids(tmp_path, capsys):
+    source = _write(tmp_path, _matrix_with_multiline_ids(), "results.json")
+    output = tmp_path / "keep.jsonl"
+
+    assert (
+        main(
+            [
+                str(source),
+                "--save-reduced",
+                str(output),
+                "--save-reduced-format",
+                "jsonl",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    report = json.loads(capsys.readouterr().out)
+    saved = [
+        json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(saved) == report["reduction"]["kept"]
+    assert all("\n" in item_id for item_id in saved)
+
+
+@pytest.mark.parametrize(
+    "line_break",
+    ["\n", "\r", "\v", "\f", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029"],
+)
+def test_plain_reduced_output_refuses_every_splitlines_boundary(tmp_path, line_break):
+    output = tmp_path / "keep.txt"
+    output.write_text("previous output\n", encoding="utf-8")
+
+    with pytest.raises(cli_module.OutputError, match="line break"):
+        cli_module._write_reduced(output, [f"before{line_break}after"])
+
+    assert output.read_text(encoding="utf-8") == "previous output\n"
+
+
+def test_reduced_jsonl_round_trips_arbitrary_string_ids(tmp_path):
+    output = tmp_path / "keep.jsonl"
+    item_ids = [
+        "plain",
+        "with\nline",
+        "nul\x00byte",
+        "model-\u6a21\u578b",
+        'quote"slash\\',
+    ]
+
+    cli_module._write_reduced(output, item_ids, output_format="jsonl")
+
+    physical_lines = output.read_text(encoding="utf-8").splitlines()
+    assert len(physical_lines) == len(item_ids)
+    assert [json.loads(line) for line in physical_lines] == item_ids
+
+
+def test_nondefault_reduced_format_requires_an_output_path(tmp_path, capsys):
+    source = _write(tmp_path, HEALTHY)
+
+    with pytest.raises(SystemExit) as caught:
+        main([str(source), "--save-reduced-format", "jsonl"])
+
+    assert caught.value.code == 2
+    assert "--save-reduced-format requires --save-reduced" in capsys.readouterr().err
 
 
 def test_ascii_output_has_no_wide_characters(tmp_path, capsys):

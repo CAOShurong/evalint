@@ -26,6 +26,10 @@ EXIT_PROBLEMS = 2
 #: Below this, reliability means the leaderboard is mostly noise.
 FAIL_RELIABILITY = 0.6
 
+# Python's splitlines() recognizes these as record boundaries. A plain
+# one-id-per-line file cannot distinguish one inside an id from its delimiter.
+_LINE_BREAKS = frozenset("\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029")
+
 
 class OutputError(Exception):
     """A requested output could not be written without risking data."""
@@ -102,6 +106,15 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="write the reduced set's item ids, one per line",
     )
+    parser.add_argument(
+        "--save-reduced-format",
+        choices=("lines", "jsonl"),
+        default="lines",
+        help=(
+            "reduced-id serialization (default: lines; jsonl preserves ids "
+            "containing line breaks)"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--color",
@@ -124,6 +137,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_intermixed_args(argv)
     _use_utf8(sys.stdout)
     _use_utf8(sys.stderr)
+
+    if args.save_reduced is None and args.save_reduced_format != "lines":
+        parser.error("--save-reduced-format requires --save-reduced")
 
     if args.save_reduced and not args.no_reduce:
         for path in args.paths:
@@ -150,7 +166,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.save_reduced and audit.reduction is not None:
         try:
-            _write_reduced(args.save_reduced, audit.reduction.kept)
+            _write_reduced(
+                args.save_reduced,
+                audit.reduction.kept,
+                output_format=args.save_reduced_format,
+            )
         except OutputError as exc:
             _print_error(exc)
             return 1
@@ -189,8 +209,26 @@ def _same_file(left: pathlib.Path, right: pathlib.Path) -> bool:
         )
 
 
-def _write_reduced(path: pathlib.Path, item_ids: list[str]) -> None:
+def _write_reduced(
+    path: pathlib.Path,
+    item_ids: list[str],
+    *,
+    output_format: str = "lines",
+) -> None:
     """Replace a reduced-set output only after its complete contents exist."""
+    if output_format == "jsonl":
+        contents = "".join(json.dumps(item_id) + "\n" for item_id in item_ids)
+    else:
+        has_line_break = any(
+            character in _LINE_BREAKS for item_id in item_ids for character in item_id
+        )
+        if has_line_break:
+            raise OutputError(
+                "cannot write line-oriented reduced set: a kept item id contains "
+                "a line break; use --save-reduced-format jsonl to preserve it"
+            )
+        contents = "\n".join(item_ids) + "\n"
+
     temporary: pathlib.Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -203,7 +241,7 @@ def _write_reduced(path: pathlib.Path, item_ids: list[str]) -> None:
             delete=False,
         ) as stream:
             temporary = pathlib.Path(stream.name)
-            stream.write("\n".join(item_ids) + "\n")
+            stream.write(contents)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
