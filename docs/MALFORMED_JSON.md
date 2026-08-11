@@ -65,3 +65,6 @@ Distinct nested paths can also expose conflicting values under one recognized
 generic field name even when every JSON object is syntactically valid and uses
 unique members. EvalInt refuses that semantic flattening ambiguity; see
 [the nested-field conflict contract](NESTED_FIELD_CONFLICTS.md).
+Valid JSON can also exceed the Python decoder's safe nesting boundary. EvalInt
+turns that runtime exception into a bounded import error; see
+[the deep-JSON contract](DEEP_JSON.md).

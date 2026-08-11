@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.24] - 2026-08-12
+
+### Fixed
+
+- Convert Python's deeply nested JSON `RecursionError` into a bounded exit-`1`
+  import error during automatic detection and all JSON readers.
+- Keep JSON report stdout empty and avoid echoing input content or leaking a
+  Python traceback when the runtime's safe nesting boundary is exceeded.
+
+### Added
+
+- Document the public installed-CLI reproduction, maintained parser
+  alternatives, migration costs, false positives, false negatives, and the
+  explicit distinction between graceful failure and resource-exhaustion
+  protection.
+
 ## [0.2.23] - 2026-08-12
 
 ### Fixed

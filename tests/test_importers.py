@@ -24,12 +24,43 @@ from evalint.importers import (
     parse_text,
 )
 
+
+def _deep_json(depth: int = 12_000) -> str:
+    nested = '{"child":' * depth + "0" + "}" * depth
+    return (
+        '[{"item_id":"q1","system":"alpha","score":1,"metadata":'
+        + nested
+        + '},{"item_id":"q1","system":"beta","score":0}]'
+    )
+
+
 # -- format detection is by shape, not by extension -----------------------
 
 
 def test_detects_a_long_csv():
     text = "item_id,system,score\na,gpt,1\na,claude,0\n"
     assert detect_format(text) == "csv"
+
+
+@pytest.mark.parametrize(
+    "fmt",
+    ("auto", "jsonl", "matrix", "promptfoo", "openai-evals"),
+)
+def test_deeply_nested_json_is_a_bounded_import_error(fmt):
+    with pytest.raises(ImportError_) as caught:
+        parse_text(_deep_json(), fmt)
+
+    message = str(caught.value)
+    assert "JSON nesting is too deep" in message
+    assert len(message) < 200
+    assert "child" not in message
+
+
+def test_deeply_nested_json_detection_is_a_bounded_import_error():
+    with pytest.raises(ImportError_) as caught:
+        detect_format(_deep_json())
+
+    assert str(caught.value).startswith("JSON nesting is too deep")
 
 
 @pytest.mark.parametrize(

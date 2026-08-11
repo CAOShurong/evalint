@@ -68,6 +68,16 @@ bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.
 Promptfoo JSON syntax errors use the same no-traceback boundary.
 
+JSON that exceeds Python's safe decoder nesting boundary also fails with a
+bounded import error across automatic detection and every JSON reader, without
+echoing input content or printing a traceback. EvalInt does not raise the
+process-wide recursion limit. This is graceful-failure hardening, not a fixed
+portable maximum or denial-of-service protection: a shallower or larger file
+can still consume substantial memory or CPU, and the importers still read a
+complete file into memory. Use operating-system resource limits for hostile
+input. A clean parse does not prove that an input is small, cheap, complete,
+correct, authentic, or safe.
+
 All actual JSON readers reject a repeated member name before an ordinary
 dictionary can discard the earlier value. This prevents an ambiguous object
 from silently replacing a schema marker, score, identifier, or metadata field.

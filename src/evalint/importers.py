@@ -45,6 +45,12 @@ class _ConflictingFlattenedField(ValueError):
     """Distinct nested paths would expose one leaf name with different values."""
 
 
+_JSON_DEPTH_ERROR = (
+    "JSON nesting is too deep for this Python runtime; reduce the nesting "
+    "or export a flatter supported format"
+)
+
+
 def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     """Build one object while rejecting names a normal ``dict`` would lose."""
     result: dict[str, object] = {}
@@ -58,7 +64,18 @@ def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 def _strict_json_loads(text: str):
     """Decode JSON without silently applying a last-member-wins policy."""
-    return json.loads(text, object_pairs_hook=_unique_json_object)
+    try:
+        return json.loads(text, object_pairs_hook=_unique_json_object)
+    except RecursionError as exc:
+        raise ImportError_(_JSON_DEPTH_ERROR) from exc
+
+
+def _detection_json_loads(text: str):
+    """Decode a shape probe while retaining a bounded recursion boundary."""
+    try:
+        return json.loads(text)
+    except RecursionError as exc:
+        raise ImportError_(_JSON_DEPTH_ERROR) from exc
 
 
 #: Column names that mean "which eval case is this", most specific first.
@@ -165,7 +182,7 @@ def detect_format(text: str) -> str:
 
     if stripped.startswith("{") or stripped.startswith("["):
         try:
-            data = json.loads(text)
+            data = _detection_json_loads(text)
         except ValueError:
             # A JSON-looking file that will not parse whole is line-delimited.
             # This branch is the one an OpenAI evals log takes -- its first
@@ -197,7 +214,7 @@ def _jsonl_kind(text: str) -> str:
         if not line.strip():
             continue
         try:
-            first = json.loads(line)
+            first = _detection_json_loads(line)
         except ValueError:
             return "unknown"
         if not isinstance(first, dict):
@@ -216,7 +233,7 @@ def _looks_like_jsonl(text: str) -> bool:
         return False
     for line in lines:
         try:
-            json.loads(line)
+            _detection_json_loads(line)
         except ValueError:
             return False
     return True

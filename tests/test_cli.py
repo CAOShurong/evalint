@@ -52,6 +52,15 @@ def _write(tmp_path, text, name="results.csv"):
     return path
 
 
+def _deep_json(depth: int = 12_000) -> str:
+    nested = '{"child":' * depth + "0" + "}" * depth
+    return (
+        '[{"item_id":"q1","system":"alpha","score":1,"metadata":'
+        + nested
+        + '},{"item_id":"q1","system":"beta","score":0}]'
+    )
+
+
 def test_a_healthy_file_exits_zero(tmp_path, capsys):
     assert main([str(_write(tmp_path, HEALTHY))]) == 0
     assert "evalint" in capsys.readouterr().out
@@ -98,6 +107,23 @@ def test_late_malformed_jsonl_exits_one_without_a_traceback(tmp_path, capsys):
     assert "JSONL" in captured.err
     assert "line 6" in captured.err
     assert "column" in captured.err
+    assert "Traceback" not in captured.err
+
+
+@pytest.mark.parametrize("forced_format", (None, "jsonl"))
+def test_deeply_nested_json_exits_one_without_a_traceback(
+    tmp_path, capsys, forced_format
+):
+    path = _write(tmp_path, _deep_json(), "deep.json")
+    args = [str(path), "--json"]
+    if forced_format is not None:
+        args.extend(("--format", forced_format))
+
+    assert main(args) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "JSON nesting is too deep" in captured.err
+    assert len(captured.err) < 400
     assert "Traceback" not in captured.err
 
 
