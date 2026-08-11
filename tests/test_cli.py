@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
 import pytest
 
+import evalint.cli as cli_module
 from evalint.cli import EXIT_PROBLEMS, main
 
 HEALTHY = "item_id,text,system,score\n" + "".join(
@@ -133,6 +135,63 @@ def test_save_reduced_writes_one_id_per_line(tmp_path, capsys):
     assert ids
     assert all(i.startswith("q") for i in ids)
     capsys.readouterr()
+
+
+def test_save_reduced_refuses_to_overwrite_an_input(tmp_path, capsys):
+    source = _write(tmp_path, HEALTHY)
+    before = source.read_bytes()
+
+    assert main([str(source), "--save-reduced", str(source)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "input" in captured.err
+    assert "refus" in captured.err
+    assert "Traceback" not in captured.err
+    assert source.read_bytes() == before
+
+
+def test_save_reduced_refuses_a_hard_link_to_an_input(tmp_path, capsys):
+    source = _write(tmp_path, HEALTHY)
+    alias = tmp_path / "alias.csv"
+    os.link(source, alias)
+    before = source.read_bytes()
+
+    assert main([str(source), "--save-reduced", str(alias)]) == 1
+    assert "input" in capsys.readouterr().err
+    assert source.read_bytes() == before
+    assert alias.read_bytes() == before
+
+
+def test_save_reduced_reports_write_errors_without_a_traceback(tmp_path, capsys):
+    source = _write(tmp_path, HEALTHY)
+
+    assert main([str(source), "--save-reduced", str(tmp_path)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "cannot write" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_save_reduced_preserves_an_existing_output_when_replace_fails(
+    tmp_path, capsys, monkeypatch
+):
+    source = _write(tmp_path, HEALTHY)
+    output = tmp_path / "keep.txt"
+    output.write_text("previous output\n", encoding="utf-8")
+
+    def fail_replace(_source, _destination):
+        raise PermissionError("fixture denies replace")
+
+    monkeypatch.setattr(cli_module.os, "replace", fail_replace)
+    assert main([str(source), "--save-reduced", str(output)]) == 1
+    captured = capsys.readouterr()
+    assert "cannot write" in captured.err
+    assert "Traceback" not in captured.err
+    assert output.read_text(encoding="utf-8") == "previous output\n"
+    assert sorted(path.name for path in tmp_path.iterdir()) == [
+        "keep.txt",
+        "results.csv",
+    ]
 
 
 def test_ascii_output_has_no_wide_characters(tmp_path, capsys):

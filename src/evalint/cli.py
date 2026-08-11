@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import os
 import pathlib
 import sys
+import tempfile
 
 from . import __version__
 from .dedupe import THRESHOLD
@@ -22,6 +24,10 @@ EXIT_PROBLEMS = 2
 
 #: Below this, reliability means the leaderboard is mostly noise.
 FAIL_RELIABILITY = 0.6
+
+
+class OutputError(Exception):
+    """A requested output could not be written without risking data."""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -117,6 +123,16 @@ def main(argv: list[str] | None = None) -> int:
     _use_utf8(sys.stdout)
     _use_utf8(sys.stderr)
 
+    if args.save_reduced and not args.no_reduce:
+        for path in args.paths:
+            if _same_file(args.save_reduced, path):
+                print(
+                    f"evalint: refusing to overwrite input {path} with "
+                    f"--save-reduced {args.save_reduced}",
+                    file=sys.stderr,
+                )
+                return 1
+
     try:
         matrix, fmt = load_many(args.paths, args.format)
     except ImportError_ as exc:
@@ -132,9 +148,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.save_reduced and audit.reduction is not None:
-        args.save_reduced.write_text(
-            "\n".join(audit.reduction.kept) + "\n", encoding="utf-8"
-        )
+        try:
+            _write_reduced(args.save_reduced, audit.reduction.kept)
+        except OutputError as exc:
+            print(f"evalint: {exc}", file=sys.stderr)
+            return 1
 
     if args.json:
         payload = audit.as_dict()
@@ -154,6 +172,41 @@ def _source_name(paths: list[pathlib.Path]) -> str:
     if len(paths) == 1:
         return paths[0].name
     return f"{paths[0].name} +{len(paths) - 1} more"
+
+
+def _same_file(left: pathlib.Path, right: pathlib.Path) -> bool:
+    """Recognise lexical aliases, symlinks, and hard links where possible."""
+    try:
+        return os.path.samefile(left, right)
+    except OSError:
+        return os.path.normcase(os.path.abspath(left)) == os.path.normcase(
+            os.path.abspath(right)
+        )
+
+
+def _write_reduced(path: pathlib.Path, item_ids: list[str]) -> None:
+    """Replace a reduced-set output only after its complete contents exist."""
+    temporary: pathlib.Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+            delete=False,
+        ) as stream:
+            temporary = pathlib.Path(stream.name)
+            stream.write("\n".join(item_ids) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except OSError as exc:
+        if temporary is not None:
+            with contextlib.suppress(OSError):
+                temporary.unlink()
+        raise OutputError(f"cannot write reduced set to {path}: {exc}") from exc
 
 
 def _exit_code(audit: Audit, fail_under: float | None) -> int:
