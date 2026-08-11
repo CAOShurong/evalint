@@ -154,6 +154,15 @@ EvalInt uses the export-local `testIdx` as the item identity. See
 [`docs/PROMPTFOO_JSONL.md`](docs/PROMPTFOO_JSONL.md) and
 [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
 
+Promptfoo permits separate test cases to reuse the same variables while using
+different descriptions or assertions. When one export contains multiple
+`testIdx` values for the same variables, EvalInt includes that export-local
+index in the affected item identities instead of averaging the cases as repeat
+runs. Unique variable sets keep their existing identities, and actual repeats
+with the same `testIdx` still aggregate. Descriptions, assertions, metadata,
+rendered prompts, and outputs are not copied into the identity; see
+[`docs/PROMPTFOO_TEST_CASES.md`](docs/PROMPTFOO_TEST_CASES.md).
+
 Current Promptfoo results identify a comparison system by provider id, any
 distinct provider label, and `promptId`. This keeps prompt A/B variants and
 separately labelled configurations of the same provider apart instead of

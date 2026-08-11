@@ -677,6 +677,44 @@ def _promptfoo_system_id(provider: str, entry: dict, location: str) -> str:
     return f"promptfoo:{identity}"
 
 
+def _promptfoo_duplicate_vars(results: list) -> set[str]:
+    """Find variable sets used by more than one Promptfoo test case."""
+    test_indexes: dict[str, set[int]] = {}
+    for entry in results:
+        if not isinstance(entry, dict):
+            continue
+        case = entry.get("testCase") or entry.get("test") or {}
+        vars_ = case.get("vars") if isinstance(case, dict) else None
+        test_idx = entry.get("testIdx")
+        if (
+            isinstance(vars_, dict)
+            and vars_
+            and isinstance(test_idx, int)
+            and not isinstance(test_idx, bool)
+        ):
+            item_id = json.dumps(vars_, sort_keys=True)
+            test_indexes.setdefault(item_id, set()).add(test_idx)
+    return {item_id for item_id, indexes in test_indexes.items() if len(indexes) > 1}
+
+
+def _promptfoo_vars_item_id(
+    vars_: dict, duplicate_vars: set[str], entry: dict, location: str
+) -> str:
+    """Use an export-local index only when variables do not identify one case."""
+    item_id = json.dumps(vars_, sort_keys=True)
+    if item_id not in duplicate_vars:
+        return item_id
+    test_idx = entry.get("testIdx")
+    if not isinstance(test_idx, int) or isinstance(test_idx, bool):
+        raise ImportError_(f"{location} has an invalid testIdx")
+    identity = json.dumps(
+        {"test_idx": test_idx, "vars": vars_},
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return f"promptfoo:{identity}"
+
+
 def _read_promptfoo(text: str) -> Matrix:
     """Promptfoo eval JSON envelopes and current per-result JSONL exports."""
     locations: list[str] | None = None
@@ -707,6 +745,7 @@ def _read_promptfoo(text: str) -> Matrix:
                     "invalid Promptfoo JSON: results must be an array of eval results"
                 )
 
+    duplicate_vars = _promptfoo_duplicate_vars(results)
     matrix = Matrix()
     for entry_number, entry in enumerate(results, start=1):
         location = (
@@ -729,8 +768,7 @@ def _read_promptfoo(text: str) -> Matrix:
         item_id = None
         prompt_text = ""
         if isinstance(vars_, dict) and vars_:
-            # promptfoo identifies a case by its variables, not by an id.
-            item_id = json.dumps(vars_, sort_keys=True)
+            item_id = _promptfoo_vars_item_id(vars_, duplicate_vars, entry, location)
             prompt_text = " ".join(str(v) for v in vars_.values())
         if item_id is None:
             prompt = entry.get("prompt")
