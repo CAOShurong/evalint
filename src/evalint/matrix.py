@@ -16,7 +16,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-__all__ = ["Item", "Matrix", "System"]
+__all__ = ["InvalidScore", "Item", "Matrix", "System"]
+
+
+class InvalidScore(ValueError):
+    """A score cannot be interpreted on EvalInt's declared unit scale."""
 
 
 @dataclass(frozen=True)
@@ -99,10 +103,10 @@ class Matrix:
         """
         if repetitions < 1:
             raise ValueError("repetitions must be at least 1")
+        value = _unit_score(score)
         if system not in self.systems:
             self.systems.append(system)
         key = (item_id, system)
-        value = _clamp(score)
         previous_count = self._score_counts.get(key, 0)
         total_count = previous_count + repetitions
         previous_total = self._scores.get(key, 0.0) * previous_count
@@ -252,14 +256,13 @@ class Matrix:
         return matrix
 
 
-def _clamp(value: float) -> float:
-    """Scores outside [0, 1] are a units mistake, not a signal.
-
-    A grader emitting 0-100 or -1/1 is common enough that silently accepting
-    it would corrupt every statistic downstream while looking fine. Clamping
-    keeps one bad row from poisoning the whole report; the CLI warns when it
-    sees a file whose range suggests the wrong units.
-    """
-    if math.isnan(value):
-        return 0.0
-    return max(0.0, min(1.0, float(value)))
+def _unit_score(value: float) -> float:
+    """Return a valid unit score, refusing ambiguous or non-finite values."""
+    score = float(value)
+    if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+        raise InvalidScore(
+            f"score must be a finite number in [0, 1], got {value!r}; "
+            "normalize a known [MIN, MAX] scale explicitly with "
+            "(score - MIN) / (MAX - MIN)"
+        )
+    return score

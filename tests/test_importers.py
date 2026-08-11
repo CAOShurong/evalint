@@ -172,6 +172,18 @@ def test_an_unparseable_score_is_skipped_not_guessed():
     assert matrix.score("b", "y") == 1.0
 
 
+@pytest.mark.parametrize("raw", ["1.01", "-0.01", "nan", "inf", "-inf"])
+def test_a_score_outside_the_declared_unit_range_is_refused(raw):
+    text = f"item_id,system,score\na,x,{raw}\na,y,1\n"
+
+    with pytest.raises(ImportError_) as caught:
+        load_text(text)
+    message = str(caught.value)
+    assert "finite" in message
+    assert "[0, 1]" in message
+    assert "normalize" in message
+
+
 # -- the shapes themselves ------------------------------------------------
 
 

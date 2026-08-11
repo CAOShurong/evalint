@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import math
+import pytest
 
 from conftest import grid
 from evalint.matrix import Item, Matrix
@@ -40,22 +40,16 @@ def test_ranking_is_best_first_and_ties_break_by_name():
     assert [name for name, _ in matrix.ranking()] == ["alpha", "zeta", "mid"]
 
 
-def test_scores_outside_the_unit_range_are_clamped():
-    """A grader emitting 0-100 must not silently corrupt every statistic."""
+@pytest.mark.parametrize("score", [87.0, -3.0, float("nan"), float("inf")])
+def test_scores_outside_the_unit_range_are_refused(score):
+    """A grader emitting the wrong scale must not reach the statistics."""
     matrix = Matrix()
     matrix.add_item(Item(id="a"))
-    matrix.record("a", "x", 87.0)
-    matrix.record("a", "y", -3.0)
-    assert matrix.score("a", "x") == 1.0
-    assert matrix.score("a", "y") == 0.0
 
-
-def test_nan_scores_do_not_propagate():
-    matrix = Matrix()
-    matrix.add_item(Item(id="a"))
-    matrix.record("a", "x", float("nan"))
-    assert matrix.score("a", "x") == 0.0
-    assert not math.isnan(matrix.system_mean("x"))
+    with pytest.raises(ValueError, match=r"finite.*\[0, 1\]"):
+        matrix.record("a", "x", score)
+    assert matrix.systems == []
+    assert matrix.measurements == 0
 
 
 def test_adding_an_item_twice_keeps_the_richer_record():

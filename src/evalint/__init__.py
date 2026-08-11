@@ -26,17 +26,18 @@ from .importers import (
     merge,
     parse_text,
 )
-from .matrix import Item, Matrix, System
+from .matrix import InvalidScore, Item, Matrix, System
 from .reduce import Reduction, kendall_tau, reduce_set
 from .report import Audit, audit_matrix, render
 from .stats import ItemStats, SetStats, item_stats, set_stats
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 __all__ = [
     "Audit",
     "Cluster",
     "ImportError_",
+    "InvalidScore",
     "Item",
     "ItemStats",
     "Matrix",
