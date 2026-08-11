@@ -749,6 +749,19 @@ def _read_promptfoo(text: str) -> Matrix:
         system = _promptfoo_system_id(str(system), entry, location)
         matrix.add_item(Item(id=str(item_id), text=prompt_text))
         matrix.add_system(system)
+        if "failureReason" in entry:
+            failure_reason = entry["failureReason"]
+            if (
+                isinstance(failure_reason, bool)
+                or not isinstance(failure_reason, int)
+                or failure_reason not in (0, 1, 2)
+            ):
+                raise ImportError_(f"{location} has an invalid failureReason")
+            if failure_reason == 2:
+                # Promptfoo distinguishes provider/grader/runtime errors from
+                # failed assertions. Its synthetic score=0 is not an observed
+                # answer-quality measurement.
+                continue
         score = entry.get("score")
         if score is None:
             score = entry.get("success")

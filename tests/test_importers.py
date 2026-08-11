@@ -1136,6 +1136,86 @@ def test_promptfoo_repeats_with_the_same_provider_label_still_aggregate():
     assert matrix.score('{"case": "q1"}', matrix.systems[0]) == 0.5
 
 
+def test_promptfoo_provider_errors_are_missing_measurements_not_zeroes():
+    records = []
+    for test_idx, case in enumerate(("q1", "q2")):
+        for label, score, failure_reason in (
+            ("pass-config", 1, 0),
+            ("error-config", 0, 2),
+        ):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {"vars": {"case": case}},
+                    "promptId": "prompt-a",
+                    "provider": {"id": "local:same-id", "label": label},
+                    "prompt": {"raw": "question"},
+                    "success": bool(score),
+                    "score": score,
+                    "failureReason": failure_reason,
+                    "error": "PRIVATE_PROVIDER_SENTINEL" if failure_reason else None,
+                }
+            )
+
+    matrix, fmt = parse_text("\n".join(json.dumps(record) for record in records))
+
+    assert fmt == "promptfoo"
+    assert len(matrix.systems) == 2
+    assert matrix.observations == 2
+    assert matrix.measurements == 2
+    error_system = next(system for system in matrix.systems if "error-config" in system)
+    assert matrix.scores_for_system(error_system) == {}
+
+
+def test_promptfoo_assertion_failures_remain_observed_zeroes():
+    records = [
+        {
+            "testIdx": 0,
+            "promptIdx": 0,
+            "testCase": {"vars": {"case": "q1"}},
+            "promptId": "prompt-a",
+            "provider": {"id": provider},
+            "prompt": {"raw": "question"},
+            "success": bool(score),
+            "score": score,
+            "failureReason": failure_reason,
+        }
+        for provider, score, failure_reason in (
+            ("pass-provider", 1, 0),
+            ("failed-assertion", 0, 1),
+        )
+    ]
+
+    matrix, _ = load_text("\n".join(json.dumps(record) for record in records))
+
+    assert matrix.observations == 2
+    failed_system = next(
+        system for system in matrix.systems if "failed-assertion" in system
+    )
+    assert matrix.score('{"case": "q1"}', failed_system) == 0
+
+
+@pytest.mark.parametrize("failure_reason", (None, -1, 3, "2", 2.0, True))
+def test_promptfoo_rejects_an_invalid_present_failure_reason(failure_reason):
+    record = {
+        "testIdx": 0,
+        "promptIdx": 0,
+        "testCase": {"vars": {"case": "q1"}},
+        "promptId": "prompt-a",
+        "provider": {"id": "alpha"},
+        "prompt": {"raw": "question"},
+        "success": False,
+        "score": 0,
+        "failureReason": failure_reason,
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(record))
+
+    assert "Promptfoo JSONL line 1 has an invalid failureReason" in str(caught.value)
+
+
 def test_promptfoo_legacy_results_without_prompt_id_keep_provider_identity():
     payload = {
         "results": [

@@ -193,6 +193,42 @@ def test_invalid_promptfoo_provider_label_exits_one_without_echo(tmp_path, capsy
     assert "Traceback" not in captured.err
 
 
+def test_promptfoo_provider_errors_do_not_become_a_zero_score_ranking(tmp_path, capsys):
+    records = []
+    for test_idx in range(2):
+        for label, score, failure_reason in (
+            ("pass-config", 1, 0),
+            ("error-config", 0, 2),
+        ):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {"vars": {"case": f"q{test_idx + 1}"}},
+                    "promptId": "prompt-a",
+                    "provider": {"id": "local:same-id", "label": label},
+                    "prompt": {"raw": "question"},
+                    "success": bool(score),
+                    "score": score,
+                    "failureReason": failure_reason,
+                    "error": "PRIVATE_PROVIDER_SENTINEL" if failure_reason else None,
+                }
+            )
+    path = _write(
+        tmp_path,
+        "\n".join(json.dumps(record) for record in records),
+        "provider-errors.jsonl",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "found no usable scores" in captured.err
+    assert "error-config" in captured.err
+    assert "PRIVATE_PROVIDER_SENTINEL" not in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_malformed_promptfoo_jsonl_exits_one_without_a_subset_report(tmp_path, capsys):
     lines = _promptfoo_jsonl().splitlines()
     lines[1] = '{"testIdx":0,"promptIdx":1,"provider":'

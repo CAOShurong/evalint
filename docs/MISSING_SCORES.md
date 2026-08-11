@@ -42,6 +42,7 @@ Sources:
 - [Inspect AI issue 4481: surface scored, errored, and unscored coverage](https://github.com/UKGovernmentBEIS/inspect_ai/issues/4481)
 - [Promptfoo output formats and error-row contract](https://www.promptfoo.dev/docs/configuration/outputs/)
 - [Promptfoo issue 827: an assertion error suppressed grading results](https://github.com/promptfoo/promptfoo/issues/827)
+- [Promptfoo's current result type distinguishes assertion failures from other errors](https://github.com/promptfoo/promptfoo/blob/main/src/types/index.ts)
 
 ## Alternatives considered
 
@@ -81,6 +82,9 @@ EvalInt's selected fix adds no runtime dependency.
   score. If any such system has zero usable scores across the merged input,
   the audit exits `1` with its name and no report.
 - Raw repeated measurements remain separate from unique coverage cells.
+- Current Promptfoo rows marked `failureReason=2` retain their item and system
+  but not their synthetic zero score. See
+  [`PROMPTFOO_ERRORS.md`](PROMPTFOO_ERRORS.md).
 - No value is imputed, and missing never becomes zero.
 - Reliability continues to use only items observed for every system.
 

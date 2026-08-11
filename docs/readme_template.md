@@ -164,6 +164,13 @@ without `promptId` retain their provider-only identity; see
 [`docs/PROMPT_VARIANTS.md`](docs/PROMPT_VARIANTS.md) and
 [`docs/PROMPTFOO_PROVIDER_VARIANTS.md`](docs/PROMPTFOO_PROVIDER_VARIANTS.md).
 
+Promptfoo's current `failureReason=2` means a provider, grader, or runtime
+error, not a failed assertion. EvalInt keeps the affected item and system but
+does not turn Promptfoo's synthetic zero into an answer-quality measurement.
+An entirely errored system therefore exits `1`; a partially errored run shows
+incomplete coverage. Assertion failures (`failureReason=1`) remain observed
+scores. See [`docs/PROMPTFOO_ERRORS.md`](docs/PROMPTFOO_ERRORS.md).
+
 JSON that exceeds Python's safe nesting boundary exits `1` with a bounded
 message and no traceback across automatic detection and every JSON reader.
 EvalInt does not raise the interpreter's recursion limit or claim that a clean
