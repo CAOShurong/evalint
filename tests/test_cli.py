@@ -44,6 +44,18 @@ def test_a_missing_file_exits_one(tmp_path, capsys):
     assert "cannot read" in capsys.readouterr().err
 
 
+def test_invalid_utf8_exits_one_without_a_traceback(tmp_path, capsys):
+    path = tmp_path / "invalid.csv"
+    path.write_bytes(
+        b"item_id,system,score\nquestion-\xff,alpha,1\nquestion-\xff,beta,0\n"
+    )
+
+    assert main([str(path)]) == 1
+    error = capsys.readouterr().err
+    assert "not valid UTF-8" in error
+    assert "Traceback" not in error
+
+
 def test_a_noisy_set_exits_with_the_problem_status(tmp_path, capsys):
     """Distinct from 1, so a pipeline can tell "your eval set is unsound"
     from "the audit itself fell over"."""

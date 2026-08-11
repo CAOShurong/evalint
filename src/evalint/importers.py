@@ -229,6 +229,11 @@ def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
     Separate from :func:`load_text` because a single file is allowed to hold a
     single system when it is going to be merged with others.
     """
+    # Excel and other Windows tools commonly prefix UTF-8 CSV with a byte
+    # order mark. File reads remove its byte form through ``utf-8-sig``; this
+    # handles callers of the string API with the same semantics.
+    if text.startswith("\ufeff"):
+        text = text[1:]
     if fmt == "auto":
         fmt = detect_format(text)
     reader = READERS.get(fmt)
@@ -280,7 +285,16 @@ def merge(parts: list[tuple[str, Matrix]]) -> Matrix:
 
 def _read_file(path: pathlib.Path) -> str:
     try:
-        return path.read_text(encoding="utf-8", errors="replace")
+        # ``utf-8-sig`` is strict UTF-8 with one compatibility feature: it
+        # consumes an optional leading UTF-8 BOM. Never use replacement here.
+        # A changed item or system id can merge records and corrupt every
+        # statistic downstream while still producing a plausible report.
+        return path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ImportError_(
+            f"cannot read {path}: not valid UTF-8 near byte {exc.start}; "
+            "re-export it as UTF-8 (with or without a BOM)"
+        ) from exc
     except OSError as exc:
         raise ImportError_(f"cannot read {path}: {exc}") from exc
 

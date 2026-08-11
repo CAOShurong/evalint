@@ -29,6 +29,33 @@ def test_detects_a_long_csv():
     assert detect_format(text) == "csv"
 
 
+def test_utf8_bom_before_the_first_header_is_accepted(tmp_path):
+    path = tmp_path / "bom.csv"
+    path.write_text(
+        "item_id,system,score\nq1,alpha,1\nq1,beta,0\n",
+        encoding="utf-8-sig",
+    )
+
+    matrix, fmt = load(path)
+    assert fmt == "csv"
+    assert matrix.item_ids == ["q1"]
+    assert matrix.systems == ["alpha", "beta"]
+
+
+def test_invalid_utf8_is_refused_instead_of_replacing_identifiers(tmp_path):
+    path = tmp_path / "invalid.csv"
+    path.write_bytes(
+        b"item_id,system,score\nquestion-\xff,alpha,1\nquestion-\xff,beta,0\n"
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        load(path)
+    message = str(caught.value)
+    assert "not valid UTF-8" in message
+    assert "byte" in message
+    assert "re-export" in message
+
+
 def test_detects_a_wide_csv():
     text = "item_id,gpt,claude\na,1,0\nb,0,1\n"
     assert detect_format(text) == "csv"
