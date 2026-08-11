@@ -20,7 +20,7 @@ import json
 import os
 import pathlib
 
-from .matrix import ConflictingItem, InvalidScore, Item, Matrix
+from .matrix import NATIVE_SCHEMA, ConflictingItem, InvalidScore, Item, Matrix
 
 __all__ = [
     "ImportError_",
@@ -144,7 +144,7 @@ def detect_format(text: str) -> str:
             # be reached, and the format would be supported in name only.
             return _jsonl_kind(text)
         if isinstance(data, dict):
-            if data.get("schema") == "evalint/matrix-v1":
+            if data.get("schema") == NATIVE_SCHEMA:
                 return "matrix"
             if "results" in data and isinstance(data.get("results"), (dict, list)):
                 return "promptfoo"

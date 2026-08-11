@@ -536,6 +536,29 @@ def test_native_matrix_accepts_integer_valued_json_repeat_numbers():
     assert matrix.measurements == 3
 
 
+@pytest.mark.parametrize(
+    ("schema_fields", "problem"),
+    (
+        ({}, "schema is missing"),
+        ({"schema": None}, "schema is unsupported"),
+        ({"schema": 1}, "schema is unsupported"),
+        ({"schema": "evalint/matrix-v2"}, "schema is unsupported"),
+    ),
+)
+def test_native_matrix_requires_its_exact_supported_schema(schema_fields, problem):
+    raw = {
+        **schema_fields,
+        "systems": ["alpha", "beta"],
+        "items": [{"id": "q1", "scores": {"alpha": 1, "beta": 0}}],
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(raw), "matrix")
+
+    assert problem in str(caught.value)
+    assert "evalint/matrix-v1" in str(caught.value)
+
+
 def test_a_missing_file_raises_with_the_path():
     with pytest.raises(ImportError_) as caught:
         load(pathlib.Path("nowhere-at-all.csv"))

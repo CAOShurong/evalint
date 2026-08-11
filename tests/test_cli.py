@@ -269,6 +269,28 @@ def test_fractional_repeat_metadata_is_not_silently_truncated(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+@pytest.mark.parametrize("schema", [None, "evalint/matrix-v2"])
+def test_forced_matrix_format_does_not_bypass_the_schema_version(
+    tmp_path, capsys, schema
+):
+    payload = {
+        "schema": schema,
+        "systems": ["alpha", "beta"],
+        "items": [
+            {"id": "q1", "scores": {"alpha": 1, "beta": 0}},
+            {"id": "q2", "scores": {"alpha": 0, "beta": 1}},
+        ],
+    }
+    path = _write(tmp_path, json.dumps(payload), "unknown-matrix.json")
+
+    assert main(["--format", "matrix", "--json", str(path)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "schema is unsupported" in captured.err
+    assert "evalint/matrix-v1" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_save_reduced_writes_one_id_per_line(tmp_path, capsys):
     out = tmp_path / "keep.txt"
     main([str(_write(tmp_path, HEALTHY)), "--save-reduced", str(out)])

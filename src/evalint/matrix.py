@@ -16,7 +16,16 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-__all__ = ["ConflictingItem", "InvalidScore", "Item", "Matrix", "System"]
+__all__ = [
+    "NATIVE_SCHEMA",
+    "ConflictingItem",
+    "InvalidScore",
+    "Item",
+    "Matrix",
+    "System",
+]
+
+NATIVE_SCHEMA = "evalint/matrix-v1"
 
 
 class ConflictingItem(ValueError):
@@ -264,7 +273,7 @@ class Matrix:
 
     def as_dict(self) -> dict:
         return {
-            "schema": "evalint/matrix-v1",
+            "schema": NATIVE_SCHEMA,
             "systems": list(self.systems),
             "items": [
                 {
@@ -285,6 +294,13 @@ class Matrix:
 
     @classmethod
     def from_dict(cls, raw: dict) -> Matrix:
+        if "schema" not in raw:
+            raise ValueError(f"matrix schema is missing; expected {NATIVE_SCHEMA!r}")
+        if raw["schema"] != NATIVE_SCHEMA:
+            raise ValueError(
+                f"matrix schema is unsupported; expected {NATIVE_SCHEMA!r}"
+            )
+
         systems = raw.get("systems", ())
         if not isinstance(systems, list):
             raise ValueError("matrix systems must be an array")

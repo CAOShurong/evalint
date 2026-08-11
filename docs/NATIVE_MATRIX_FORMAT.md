@@ -62,6 +62,8 @@ code is copied or linked into EvalInt.
 
 ## Resulting contract
 
+- The root `schema` property is required and must be exactly
+  `evalint/matrix-v1`; see [the version contract](NATIVE_SCHEMA_VERSION.md).
 - `systems` and `items` are JSON arrays. Every system identifier and item `id`
   is a string containing at least one non-whitespace character.
 - System identifiers are unique within `systems`; item identifiers are unique
