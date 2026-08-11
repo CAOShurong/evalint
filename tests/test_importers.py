@@ -347,6 +347,150 @@ def test_a_readable_file_with_no_items_raises():
         load_text('{"schema": "evalint/matrix-v1", "systems": ["a", "b"]}')
 
 
+@pytest.mark.parametrize(
+    ("raw", "problem"),
+    (
+        (
+            {
+                "systems": ["alpha", "alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {"alpha": 1, "beta": 0}},
+                ],
+            },
+            "duplicate system identifier",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {"alpha": 1, "beta": 0}},
+                    {"id": "q1", "scores": {"alpha": 0, "beta": 1}},
+                ],
+            },
+            "duplicate item identifier",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": None, "scores": {"alpha": 1, "beta": 0}},
+                ],
+            },
+            "null item identifier",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"scores": {"alpha": 1, "beta": 0}},
+                ],
+            },
+            "missing item identifier",
+        ),
+        (
+            {
+                "systems": ["", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {"": 1, "beta": 0}},
+                ],
+            },
+            "blank system identifier",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {"alpha": 1, "betaa": 0}},
+                ],
+            },
+            "undeclared system identifier",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": 42, "scores": {"alpha": 1, "beta": 0}},
+                ],
+            },
+            "item identifier must be a string",
+        ),
+        (
+            {
+                "systems": [42, "beta"],
+                "items": [],
+            },
+            "system identifier must be a string",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "   ", "scores": {"alpha": 1, "beta": 0}},
+                ],
+            },
+            "blank item identifier",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {"": 1, "beta": 0}},
+                ],
+            },
+            "blank system identifier",
+        ),
+        (
+            {
+                "systems": "alpha",
+                "items": [],
+            },
+            "systems must be an array",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": {"id": "q1"},
+            },
+            "items must be an array",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": [1, 0]},
+                ],
+            },
+            "scores must be an object",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": None},
+                ],
+            },
+            "scores must be an object",
+        ),
+        (
+            {
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {}, "repeats": []},
+                ],
+            },
+            "repeats must be an object",
+        ),
+    ),
+)
+def test_native_matrix_refuses_ambiguous_identifiers(raw, problem):
+    raw["schema"] = "evalint/matrix-v1"
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(raw), "matrix")
+
+    assert problem in str(caught.value)
+
+
 def test_a_missing_file_raises_with_the_path():
     with pytest.raises(ImportError_) as caught:
         load(pathlib.Path("nowhere-at-all.csv"))

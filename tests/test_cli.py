@@ -116,6 +116,28 @@ def test_missing_jsonl_identifier_exits_one_without_a_subset_report(tmp_path, ca
     assert "Traceback" not in captured.err
 
 
+def test_duplicate_native_system_exits_one_without_a_report(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        json.dumps(
+            {
+                "schema": "evalint/matrix-v1",
+                "systems": ["alpha", "alpha", "beta"],
+                "items": [
+                    {"id": "q1", "scores": {"alpha": 1, "beta": 0}},
+                ],
+            }
+        ),
+        "duplicate-systems.json",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "duplicate system identifier" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(
