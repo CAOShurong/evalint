@@ -80,6 +80,33 @@ def _promptfoo_jsonl() -> str:
     return "\n".join(json.dumps(record) for record in records) + "\n"
 
 
+def _promptfoo_same_vars_distinct_tests() -> str:
+    records = []
+    for test_idx in range(2):
+        for label, scores in (
+            ("answer-provider", (1, 0)),
+            ("alternate-provider", (0, 1)),
+        ):
+            score = scores[test_idx]
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {
+                        "description": f"contract {test_idx}",
+                        "vars": {"case": "q1"},
+                        "assert": [{"type": "equals", "value": f"private-{test_idx}"}],
+                    },
+                    "promptId": "prompt-a",
+                    "provider": {"id": "local:same-id", "label": label},
+                    "prompt": {"raw": "untrusted rendered prompt"},
+                    "success": bool(score),
+                    "score": score,
+                }
+            )
+    return "\n".join(json.dumps(record) for record in records) + "\n"
+
+
 def test_a_healthy_file_exits_zero(tmp_path, capsys):
     assert main([str(_write(tmp_path, HEALTHY))]) == 0
     assert "evalint" in capsys.readouterr().out
@@ -137,6 +164,29 @@ def test_promptfoo_jsonl_runs_through_the_real_cli_entry_point(tmp_path, capsys)
     report = json.loads(captured.out)
     assert report["format"] == "promptfoo"
     assert report["summary"]["items"] == 2
+    assert captured.err == ""
+
+
+def test_promptfoo_same_vars_test_cases_remain_distinct_through_the_cli(
+    tmp_path, capsys
+):
+    path = _write(
+        tmp_path,
+        _promptfoo_same_vars_distinct_tests(),
+        "same-vars-distinct-tests.jsonl",
+    )
+
+    assert main([str(path), "--json"]) == 0
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["summary"]["items"] == 2
+    assert report["summary"]["observations"] == 4
+    assert report["summary"]["measurements"] == 4
+    assert report["summary"]["runs"] == 2
+    assert report["summary"]["informative"] == 2
+    assert "contract" not in captured.out
+    assert "private" not in captured.out
+    assert "untrusted" not in captured.out
     assert captured.err == ""
 
 

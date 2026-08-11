@@ -83,6 +83,18 @@ clean audit does not prove that every expected result was exported, that the
 producer is authentic, that providers really ran, or that scores and identities
 are semantically correct.
 
+When distinct `testIdx` values reuse one nonempty variable mapping, EvalInt
+adds the export-local index to those affected item identities. This prevents
+separate test cases from becoming repeat measurements without copying their
+descriptions, assertions, metadata, rendered prompts, or provider outputs into
+the identity. Unique variable mappings retain the prior identity, and rows with
+the same index still aggregate. This trusts the producer: reused indices can
+still collapse distinct cases, while intentionally duplicated cases with
+different indices are kept separate. Across files, the same variables and
+index can still refer to changed assertions or descriptions. A clean audit does
+not prove stable case identity, independence, completeness, or correct test
+semantics.
+
 Current Promptfoo rows with a `promptId` use a canonical JSON system identity
 containing the provider id, prompt id, and a provider label when that label is
 distinct from the id. JSON string escaping prevents control characters in

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.29] - 2026-08-12
+
+### Fixed
+
+- Preserve distinct Promptfoo test cases when two `testIdx` values reuse the
+  same variables, instead of averaging their scores as repeat measurements and
+  hiding the cases' discrimination.
+- Keep unique variable sets on their existing identity and keep repeated rows
+  with the same `testIdx` aggregated as stochastic runs.
+- Use a canonical variable-plus-index identity only for ambiguous variable
+  sets without copying the test description, assertions, metadata, rendered
+  prompt, or provider output into it.
+
+### Added
+
+- Document a real Promptfoo 0.122.0 reproduction, maintained alternatives,
+  migration cost, and false-positive/false-negative identity limits.
+
 ## [0.2.28] - 2026-08-12
 
 ### Fixed

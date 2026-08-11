@@ -1037,6 +1037,53 @@ def test_current_promptfoo_jsonl_output_is_read_automatically_and_when_forced():
         assert matrix.score('{"case": "q1"}', matrix.systems[1]) == 0
 
 
+def test_promptfoo_keeps_distinct_test_cases_that_reuse_the_same_vars():
+    records = []
+    for test_idx in range(2):
+        for label, scores in (
+            ("answer-provider", (1, 0)),
+            ("alternate-provider", (0, 1)),
+        ):
+            score = scores[test_idx]
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {
+                        "description": f"contract {test_idx}",
+                        "vars": {"case": "q1"},
+                        "assert": [{"type": "equals", "value": f"private-{test_idx}"}],
+                    },
+                    "promptId": "prompt-a",
+                    "provider": {"id": "local:same-id", "label": label},
+                    "prompt": {"raw": "untrusted rendered prompt"},
+                    "success": bool(score),
+                    "score": score,
+                }
+            )
+
+    matrix, fmt = load_text("\n".join(json.dumps(record) for record in records))
+
+    first = 'promptfoo:{"test_idx":0,"vars":{"case":"q1"}}'
+    second = 'promptfoo:{"test_idx":1,"vars":{"case":"q1"}}'
+    answer = next(system for system in matrix.systems if "answer-provider" in system)
+    alternate = next(
+        system for system in matrix.systems if "alternate-provider" in system
+    )
+    assert fmt == "promptfoo"
+    assert matrix.item_ids == [first, second]
+    assert matrix.observations == 4
+    assert matrix.measurements == 4
+    assert matrix.repetitions(first, answer) == 1
+    assert matrix.score(first, answer) == 1
+    assert matrix.score(first, alternate) == 0
+    assert matrix.score(second, answer) == 0
+    assert matrix.score(second, alternate) == 1
+    assert all("contract" not in item_id for item_id in matrix.item_ids)
+    assert all("private" not in item_id for item_id in matrix.item_ids)
+    assert all("untrusted" not in item_id for item_id in matrix.item_ids)
+
+
 def test_current_promptfoo_v3_json_results_remain_supported():
     payload = {
         "version": 3,
