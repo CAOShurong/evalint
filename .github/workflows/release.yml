@@ -51,6 +51,8 @@ jobs:
           python-version: "3.13"
       - run: python -m pip install build twine
       - run: python -m build
+      - name: Wheel contains the PEP 561 marker
+        run: python tests/check_wheel.py dist/*.whl
       - run: python -m twine check --strict dist/*
 
       - name: Check the tag matches the package version
