@@ -38,6 +38,11 @@ successful audit is a statistical diagnostic, not a security verdict, proof
 that answer keys are correct, or proof that the evaluation process is free
 from data leakage or prompt injection.
 
+Malformed JSONL and OpenAI Evals records fail at the first invalid line with a
+bounded line/column error. They are not skipped or auto-repaired, because doing
+so could remove scored items or systems and leave a plausible subset report.
+Promptfoo JSON syntax errors use the same no-traceback boundary.
+
 The alias check and replacement are a local accidental-loss boundary, not a
 defence against a hostile process changing filesystem links concurrently.
 Filesystem and operating-system crash guarantees also vary; no claim is made

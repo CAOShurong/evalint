@@ -133,6 +133,11 @@ the audit exits `1` and names it instead of silently dropping it or ranking it
 as zero. This warning does not impute data or make an incomplete comparison
 valid; see [`docs/MISSING_SCORES.md`](docs/MISSING_SCORES.md).
 
+Every nonblank JSONL and OpenAI Evals line must be complete JSON. A malformed
+record exits `1` with its line and column instead of being skipped or leaking a
+Python traceback. EvalInt never repairs a partial score record and then reports
+on the survivors; see [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
+
 ### In CI
 
 ```bash

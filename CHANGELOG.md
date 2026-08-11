@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-08-11
+
+### Fixed
+
+- Report malformed JSONL with its record line and column, exit `1`, and emit
+  no traceback. Earlier releases sampled five lines during detection, then
+  leaked a Python traceback when a later record was truncated or corrupt.
+- Stop silently skipping malformed OpenAI Evals event lines.
+- Convert malformed forced-format Promptfoo JSON into the same bounded import
+  error instead of leaking `JSONDecodeError`.
+
+### Added
+
+- Document JSON/JSONL syntax handling, maintained parser alternatives, and why
+  EvalInt refuses to skip or auto-repair corrupt score records.
+
 ## [0.2.7] - 2026-08-11
 
 ### Fixed

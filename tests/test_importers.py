@@ -98,6 +98,47 @@ def test_broken_json_that_looks_like_jsonl_is_read_as_jsonl():
     assert detect_format(text) == "jsonl"
 
 
+def test_a_late_malformed_jsonl_record_reports_its_line_and_column():
+    lines = [
+        '{"item_id":"q1","model":"alpha","score":1}',
+        '{"item_id":"q1","model":"beta","score":0}',
+        '{"item_id":"q2","model":"alpha","score":0}',
+        '{"item_id":"q2","model":"beta","score":1}',
+        '{"item_id":"q3","model":"alpha","score":1}',
+        '{"item_id":"q3","model":"beta","score":',
+    ]
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text("\n".join(lines))
+    message = str(caught.value)
+    assert "JSONL" in message
+    assert "line 6" in message
+    assert "column" in message
+
+
+def test_forced_promptfoo_reports_malformed_json_as_an_import_error():
+    with pytest.raises(ImportError_) as caught:
+        parse_text('{"results": [', "promptfoo")
+    message = str(caught.value)
+    assert "Promptfoo" in message
+    assert "line 1" in message
+    assert "column" in message
+
+
+def test_openai_evals_does_not_skip_a_malformed_event_line():
+    lines = [
+        '{"spec":{"completion_fns":["alpha"]}}',
+        '{"sample_id":"q1","type":"match","data":{"correct":1}}',
+        '{"sample_id":"q2","type":"match","data":{"correct":',
+    ]
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text("\n".join(lines), "openai-evals")
+    message = str(caught.value)
+    assert "OpenAI Evals" in message
+    assert "line 3" in message
+
+
 # -- an unreadable file must raise, never return nothing ------------------
 
 
