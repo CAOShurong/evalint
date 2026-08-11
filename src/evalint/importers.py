@@ -37,6 +37,26 @@ class ImportError_(Exception):
     """The file could not be understood as eval results."""
 
 
+class _DuplicateJsonMember(ValueError):
+    """A JSON object repeated a member name, making its meaning ambiguous."""
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Build one object while rejecting names a normal ``dict`` would lose."""
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            # Do not echo the name: imported fields can contain sensitive data.
+            raise _DuplicateJsonMember("duplicate object member")
+        result[name] = value
+    return result
+
+
+def _strict_json_loads(text: str):
+    """Decode JSON without silently applying a last-member-wins policy."""
+    return json.loads(text, object_pairs_hook=_unique_json_object)
+
+
 #: Column names that mean "which eval case is this", most specific first.
 ITEM_KEYS = (
     "item_id",
@@ -422,7 +442,7 @@ def _require_comparable(matrix: Matrix, paths) -> None:
 
 def _read_matrix(text: str) -> Matrix:
     try:
-        raw = json.loads(text)
+        raw = _strict_json_loads(text)
         if not isinstance(raw, dict):
             raise ValueError("the matrix root must be an object")
         return Matrix.from_dict(raw)
@@ -433,7 +453,9 @@ def _read_matrix(text: str) -> Matrix:
 def _json_document(text: str, label: str):
     """Decode one JSON document with a bounded, user-facing location."""
     try:
-        return json.loads(text)
+        return _strict_json_loads(text)
+    except _DuplicateJsonMember as exc:
+        raise ImportError_(f"invalid {label} JSON: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise ImportError_(
             f"invalid {label} JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
@@ -443,7 +465,11 @@ def _json_document(text: str, label: str):
 def _json_line(line: str, line_number: int, label: str):
     """Decode one JSONL record without exposing a Python traceback."""
     try:
-        return json.loads(line)
+        return _strict_json_loads(line)
+    except _DuplicateJsonMember as exc:
+        raise ImportError_(
+            f"invalid {label} JSON on line {line_number}: {exc}"
+        ) from exc
     except json.JSONDecodeError as exc:
         raise ImportError_(
             f"invalid {label} JSON on line {line_number}, column {exc.colno}: {exc.msg}"

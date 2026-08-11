@@ -68,6 +68,16 @@ bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.
 Promptfoo JSON syntax errors use the same no-traceback boundary.
 
+All actual JSON readers reject a repeated member name before an ordinary
+dictionary can discard the earlier value. This prevents an ambiguous object
+from silently replacing a schema marker, score, identifier, or metadata field.
+Errors name only the format and, for JSONL, the physical line; they do not echo
+the member name or either value. A producer that intentionally relies on
+first-wins, last-wins, or multi-value semantics must emit one unambiguous
+member instead. This check cannot detect duplicates already collapsed by an
+upstream parser, semantic aliases, duplicate records, or false content, and it
+does not authenticate the source or prove completeness.
+
 Generic JSON/JSONL and CSV records fail closed when a required item or system
 identifier is missing, null, empty, or whitespace-only. EvalInt does not invent
 an identity from a row number and does not silently skip the record. Valid

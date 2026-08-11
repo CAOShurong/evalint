@@ -78,6 +78,9 @@ code is copied or linked into EvalInt.
 - Every score value is a finite JSON number in `[0, 1]`; booleans, quoted
   numbers, null, arrays, and objects fail instead of being coerced. See
   [the native score-type contract](NATIVE_SCORE_TYPES.md).
+- Every JSON object uses each exact member name at most once, including the
+  root schema marker and nested score objects. See
+  [the duplicate-member contract](DUPLICATE_JSON_MEMBERS.md).
 - `scores` and `repeats`, when present, are objects. Repeated measurements use
   the existing per-item `repeats` map written by `Matrix.as_dict()` rather than
   duplicate item or system entries. Repeat keys must have a corresponding score

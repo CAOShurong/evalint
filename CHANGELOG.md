@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.22] - 2026-08-12
+
+### Fixed
+
+- Reject repeated member names in native matrices, generic JSON/JSONL,
+  Promptfoo documents, and OpenAI Evals events before Python's ordinary JSON
+  object conversion can silently keep only the later value.
+- Return a bounded format/line error with empty report output and no traceback,
+  without echoing the repeated name or either value.
+
+### Added
+
+- Document the reproduced schema/score override, RFC interoperability rule,
+  maintained alternatives, migration cost, false positives, false negatives,
+  and the limits of duplicate-member validation.
+
 ## [0.2.21] - 2026-08-12
 
 ### Fixed

@@ -149,6 +149,11 @@ record exits `1` with its line and column instead of being skipped or leaking a
 Python traceback. EvalInt never repairs a partial score record and then reports
 on the survivors; see [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
 
+Every JSON object must also use each exact member name at most once. Repeating
+`schema`, `score`, or another name fails before the later value can silently
+replace the earlier one. The same field names remain valid in separate objects;
+see [`docs/DUPLICATE_JSON_MEMBERS.md`](docs/DUPLICATE_JSON_MEMBERS.md).
+
 Generic JSON/JSONL and CSV records must name both the item and system they
 measure. Missing, null, empty, or whitespace-only identifiers exit `1` with a
 bounded record location instead of being skipped, merged under `"None"`, or
