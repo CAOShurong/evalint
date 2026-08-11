@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "evalint"
-version = "0.1.0"
+version = "0.2.0"
 description = "Audit an LLM eval set the way you would audit an exam: what it can measure, what is dead weight, and which items are broken."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -59,7 +59,15 @@ dev = ["pytest>=7", "ruff>=0.6"]
 packages = ["src/evalint"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "docs", "README.md", "LICENSE", "CHANGELOG.md"]
+include = [
+    "src",
+    "tests",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

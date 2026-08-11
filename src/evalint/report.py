@@ -49,10 +49,13 @@ class Audit:
         return found
 
     def as_dict(self) -> dict:
+        summary = self.summary.as_dict()
+        summary["runs"] = self.matrix.runs
+        summary["measurements"] = self.matrix.measurements
         return {
             "schema": "evalint/audit-v1",
             "source": self.source,
-            "summary": self.summary.as_dict(),
+            "summary": summary,
             "duplicate_clusters": [c.as_dict() for c in self.clusters],
             "duplicate_items": self.duplicate_items,
             "reduction": None if self.reduction is None else self.reduction.as_dict(),
@@ -115,10 +118,20 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
         "  "
         + palette.paint(
             f"{summary.items} items{sep}{summary.systems} systems"
-            f"{sep}{matrix.observations} scores",
+            + (f"{sep}{matrix.runs} runs" if matrix.has_repeats else "")
+            + f"{sep}{matrix.measurements} scores",
             "muted",
         )
     )
+    if matrix.has_repeats:
+        rows.append(
+            "  "
+            + palette.paint(
+                "repeat scores were averaged within each logical system; "
+                "they do not increase statistical independence",
+                "muted",
+            )
+        )
     if audit.units_warning:
         rows.append("  " + palette.paint(audit.units_warning, "warn"))
 
@@ -242,8 +255,8 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
             "  "
             + palette.paint(
                 f"{len(suspects)} items lean the wrong way, and "
-                f"{summary.systems} systems cannot rule out luck. More systems,"
-                " or repeat runs of the same one, would settle it.",
+                f"{summary.systems} systems cannot rule out luck. More independent"
+                " systems would settle it.",
                 "muted",
             )
         )

@@ -88,9 +88,10 @@ def test_a_file_with_one_system_is_refused_with_a_reason():
     message = str(caught.value)
     assert "only 1 system" in message
     assert "two models" in message
-    # And it points at the way out, because "one run per file" is a property
-    # of the format, not a mistake the reader made.
-    assert "run-a.jsonl" in message
+    # And it points at the valid way out without suggesting that correlated
+    # repeats of the same model create independent evidence.
+    assert "distinctly named models or prompt versions" in message
+    assert "not counted as new systems" in message
 
 
 def test_one_system_is_allowed_when_the_file_is_going_to_be_merged():
@@ -288,11 +289,12 @@ def test_several_openai_evals_logs_merge_into_a_comparable_set(tmp_path):
     assert matrix.score("s2", "gpt-4o") == 1.0
 
 
-def test_merging_keeps_two_runs_of_the_same_model_apart(tmp_path):
-    """Repeat runs of one model are a legitimate way to get a second column.
+def test_merging_does_not_invent_systems_from_repeat_runs(tmp_path):
+    """Repeated runs improve a model's estimate; they are not new models.
 
-    If both kept the bare name, the second would overwrite the first and the
-    set would look like one system that changed its mind.
+    Counting correlated runs as independent systems is pseudoreplication: it
+    makes item significance look stronger without adding an independent
+    system. One logical model is therefore still incomparable on its own.
     """
     for name, grades in (
         ("run-1", {"s1": True, "s2": True}),
@@ -302,9 +304,41 @@ def test_merging_keeps_two_runs_of_the_same_model_apart(tmp_path):
             _evals_log("gpt-4o", grades), encoding="utf-8"
         )
 
-    matrix, _ = load_many(sorted(tmp_path.glob("*.jsonl")))
-    assert sorted(matrix.systems) == ["run-1:gpt-4o", "run-2:gpt-4o"]
+    with pytest.raises(ImportError_) as caught:
+        load_many(sorted(tmp_path.glob("*.jsonl")))
+    assert "only 1 system" in str(caught.value)
+    assert "repeat runs" in str(caught.value).lower()
+
+
+def test_repeat_runs_are_averaged_within_each_logical_system(tmp_path):
+    for run, grades in (
+        ("run-1", {"gpt": (1, 0), "claude": (0, 1)}),
+        ("run-2", {"gpt": (0, 0), "claude": (1, 1)}),
+    ):
+        for model, scores in grades.items():
+            (tmp_path / f"{run}-{model}.csv").write_text(
+                "item_id,system,score\n"
+                f"q1,{model},{scores[0]}\n"
+                f"q2,{model},{scores[1]}\n",
+                encoding="utf-8",
+            )
+
+    matrix, _ = load_many(sorted(tmp_path.glob("*.csv")))
+    assert sorted(matrix.systems) == ["claude", "gpt"]
+    assert matrix.score("q1", "gpt") == 0.5
+    assert matrix.score("q1", "claude") == 0.5
     assert matrix.observations == 4
+    assert matrix.measurements == 8
+    assert matrix.runs == 4
+
+
+def test_repeated_rows_are_averaged_instead_of_last_write_winning():
+    matrix, _ = load_text(
+        "item_id,system,score\nq1,gpt,1\nq1,gpt,0\nq1,claude,0\nq1,claude,0\n"
+    )
+    assert matrix.score("q1", "gpt") == 0.5
+    assert matrix.measurements == 4
+    assert matrix.runs == 4
 
 
 def test_merging_one_csv_per_model(tmp_path):

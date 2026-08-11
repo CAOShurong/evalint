@@ -40,10 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
             "  evalint results.csv --fail-under 0.8\n"
             "  evalint gpt-4o.jsonl claude.jsonl llama.jsonl\n"
             "\n"
-            "There must be at least two systems to compare: two models, two\n"
-            "prompt versions, or the same model run twice. Formats that log\n"
-            "one run per file -- OpenAI evals, one CSV per model -- are given\n"
-            "as several files, and are merged on the item id.\n"
+            "There must be at least two logical systems to compare: two models\n"
+            "or two prompt versions. Repeat runs of the same named system are\n"
+            "averaged rather than counted as independent evidence. Formats\n"
+            "that log one run per file are merged on the item id.\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

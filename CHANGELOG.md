@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-11
+
+### Fixed
+
+- Repeated scores for the same item and logical system are averaged instead of
+  using last-write-wins or inventing a new independent system from each file.
+  This prevents repeated stochastic runs from making reliability and
+  permutation evidence look stronger through pseudoreplication.
+- Inputs containing repeat runs of only one logical system are now refused:
+  repeats improve that system's estimate, but do not create a comparison.
+- Invalid repeat counts in matrix JSON now return a normal import error instead
+  of leaking an internal exception traceback.
+
+### Added
+
+- Text and JSON reports distinguish logical systems, represented runs, and raw
+  score measurements. Matrix JSON preserves per-cell repeat counts.
+- Research and security-boundary documentation for the repeat-run decision.
+
 ## [0.1.0] - 2026-08-03
 
 First release.
@@ -39,3 +58,4 @@ First release.
   Exit `2` means the eval set has a problem; exit `1` means the audit failed.
 
 [0.1.0]: https://github.com/CAOShurong/evalint/releases/tag/v0.1.0
+[0.2.0]: https://github.com/CAOShurong/evalint/compare/v0.1.0...v0.2.0

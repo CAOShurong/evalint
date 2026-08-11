@@ -61,9 +61,11 @@ MIN_SYSTEMS_FOR_CORRELATION = 3
 #: tell them apart, and a tool that reported "21 broken items" on that basis
 #: would be sending people to fix 13 that were fine.
 #:
-#: What separates them is not a better cutoff, it is more columns: more
-#: systems, or repeated runs of the same system. :func:`chance_of_negative`
-#: measures whether the evidence is there yet instead of assuming it.
+#: What separates them is not a better cutoff, it is more independent systems.
+#: Repeated runs of one system are averaged before this function is reached;
+#: treating them as new columns would manufacture significance through
+#: pseudoreplication. :func:`chance_of_negative` measures whether genuinely
+#: independent evidence is there yet instead of assuming it.
 BROKEN_DISCRIMINATION = -0.15
 
 #: A negative discrimination is only worth acting on when chance can be ruled

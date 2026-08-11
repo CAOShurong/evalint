@@ -253,40 +253,28 @@ def load_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
 def merge(parts: list[tuple[str, Matrix]]) -> Matrix:
     """Combine several matrices into one.
 
-    The judgement call is what it means for the same system name to appear in
-    two files, because there are two honest readings and they need opposite
-    treatment:
+    A repeated ``(item, system)`` cell is another measurement of the same
+    logical system. It is averaged with the earlier value and its repetition
+    count is retained. Treating the file name as a new system would be
+    pseudoreplication: repeated stochastic runs are correlated and cannot add
+    independent evidence to the item-level permutation test.
 
-    * **Two runs of the same model.** Both files score the same items, so the
-      cells collide. These are separate columns -- repeat runs are a
-      legitimate way to get a second system to compare against, and letting
-      the later file overwrite the earlier would leave one column that looks
-      like a system changing its mind.
-    * **One run split across files.** Each file holds a different slice of the
-      items, so nothing collides. This is one column, and splitting it in two
-      would invent a system and halve the coverage of both.
-
-    A collision -- the same (item, system) cell written twice -- distinguishes
-    them, so that is what is tested rather than guessed from filenames.
+    Disjoint files with the same system name still compose into one column,
+    so a run split across files keeps its coverage. Distinct models or prompt
+    versions must carry distinct system names in the source data.
     """
-    collides: set[str] = set()
-    seen: dict[str, set[str]] = {}
-    for _, matrix in parts:
-        for system in matrix.systems:
-            already = seen.setdefault(system, set())
-            scored = set(matrix.scores_for_system(system))
-            if already & scored:
-                collides.add(system)
-            already |= scored
-
     out = Matrix()
-    for label, matrix in parts:
+    for _, matrix in parts:
         for item in matrix.items.values():
             out.add_item(item)
         for system in matrix.systems:
-            name = f"{label}:{system}" if system in collides else system
             for item_id, score in matrix.scores_for_system(system).items():
-                out.record(item_id, name, score)
+                out.record(
+                    item_id,
+                    system,
+                    score,
+                    repetitions=matrix.repetitions(item_id, system),
+                )
     return out
 
 
@@ -304,18 +292,26 @@ def _require_comparable(matrix: Matrix, paths) -> None:
     hint = (
         ""
         if paths and len(paths) > 1
-        else " Pass several files to compare runs that were logged separately:"
-        " evalint run-a.jsonl run-b.jsonl"
+        else " Pass results for at least two distinctly named models or prompt"
+        " versions. Repeat runs of one system are averaged, not counted as new"
+        " systems."
     )
     raise ImportError_(
         f"found only {len(matrix.systems)} system in {where}. Every statistic "
         "here compares systems against each other, so at least two are needed "
-        "-- two models, two prompt versions, or the same model run twice." + hint
+        "-- two models or two prompt versions. Repeat runs improve each "
+        "system's estimate but are not independent systems." + hint
     )
 
 
 def _read_matrix(text: str) -> Matrix:
-    return Matrix.from_dict(json.loads(text))
+    try:
+        raw = json.loads(text)
+        if not isinstance(raw, dict):
+            raise ValueError("the matrix root must be an object")
+        return Matrix.from_dict(raw)
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise ImportError_(f"invalid evalint matrix: {exc}") from exc
 
 
 def _read_records(text: str) -> Matrix:
