@@ -149,6 +149,13 @@ record exits `1` with its line and column instead of being skipped or leaking a
 Python traceback. EvalInt never repairs a partial score record and then reports
 on the survivors; see [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
 
+Generic JSON/JSONL and CSV records must name both the item and system they
+measure. Missing, null, empty, or whitespace-only identifiers exit `1` with a
+bounded record location instead of being skipped, merged under `"None"`, or
+ranked as an anonymous system. Nonblank spelling is preserved exactly; this
+check does not normalize aliases or change the existing missing-score policy.
+See [`docs/REQUIRED_IDENTIFIERS.md`](docs/REQUIRED_IDENTIFIERS.md).
+
 Path-based parse errors name the failing input as well as the record location.
 When auto-detected files use more than one representation, JSON reports use a
 sorted, order-independent label such as `mixed:csv,jsonl`; a same-format batch

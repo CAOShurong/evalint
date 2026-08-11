@@ -101,6 +101,21 @@ def test_late_malformed_jsonl_exits_one_without_a_traceback(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+def test_missing_jsonl_identifier_exits_one_without_a_subset_report(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        '{"item_id":"q1","system":"alpha","score":1}\n{"system":"beta","score":0}\n',
+        "missing-id.jsonl",
+    )
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "JSONL line 2" in captured.err
+    assert "missing item identifier" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(
