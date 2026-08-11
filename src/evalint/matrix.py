@@ -90,6 +90,25 @@ def _native_repeat_count(value, location: str) -> int:
     return count
 
 
+def _native_optional_string(entry: dict, field: str, location: str) -> str:
+    """Validate an optional string field without inventing text by coercion."""
+    value = entry.get(field, "")
+    if not isinstance(value, str):
+        raise ValueError(f"{location} {field} must be a string")
+    return value
+
+
+def _native_tags(entry: dict, location: str) -> tuple[str, ...]:
+    """Validate free-form labels without treating a string as an iterable."""
+    value = entry.get("tags", [])
+    if not isinstance(value, list):
+        raise ValueError(f"{location} tags must be an array")
+    for position, tag in enumerate(value, start=1):
+        if not isinstance(tag, str):
+            raise ValueError(f"{location} tags[{position}] must be a string")
+    return tuple(value)
+
+
 class Matrix:
     """Item-by-system scores, plus the bookkeeping to keep them honest.
 
@@ -339,9 +358,13 @@ class Matrix:
             matrix.add_item(
                 Item(
                     id=item_id,
-                    text=str(entry.get("text", "")),
-                    tags=tuple(entry.get("tags", ())),
-                    expected=str(entry.get("expected", "")),
+                    text=_native_optional_string(
+                        entry, "text", f"matrix items[{position}]"
+                    ),
+                    tags=_native_tags(entry, f"matrix items[{position}]"),
+                    expected=_native_optional_string(
+                        entry, "expected", f"matrix items[{position}]"
+                    ),
                 )
             )
 

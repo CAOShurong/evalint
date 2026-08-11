@@ -138,6 +138,32 @@ def test_duplicate_native_system_exits_one_without_a_report(tmp_path, capsys):
     assert "Traceback" not in captured.err
 
 
+def test_null_native_item_text_exits_one_without_a_report(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        json.dumps(
+            {
+                "schema": "evalint/matrix-v1",
+                "systems": ["alpha", "beta"],
+                "items": [
+                    {
+                        "id": "q1",
+                        "text": None,
+                        "scores": {"alpha": 1, "beta": 0},
+                    },
+                ],
+            }
+        ),
+        "null-item-text.json",
+    )
+
+    assert main([str(path), "--format", "matrix", "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "matrix items[1] text must be a string" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_an_out_of_range_score_exits_one_without_a_plausible_report(tmp_path, capsys):
     path = tmp_path / "wrong-scale.csv"
     path.write_text(

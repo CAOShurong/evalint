@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.20] - 2026-08-12
+
+### Fixed
+
+- Validate native item metadata before constructing an item: `text` and
+  `expected` must be strings when present, while `tags` must be an array of
+  strings. Earlier releases turned JSON null into the literal text `"None"`,
+  which could manufacture duplicate-item findings, and split a string tag into
+  character labels.
+- Keep omitted metadata compatible with the existing empty string and empty
+  tag-list defaults, while returning a bounded exit-`1` import error for a
+  present field of the wrong type.
+
+### Added
+
+- Document the reproduced report distortion, maintained validation
+  alternatives, migration path, and limits of structural metadata checks.
+
 ## [0.2.19] - 2026-08-12
 
 ### Fixed
