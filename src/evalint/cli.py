@@ -14,6 +14,7 @@ from . import __version__
 from .dedupe import THRESHOLD
 from .importers import ImportError_, load_many
 from .report import Audit, Palette, audit_matrix, render
+from .terminal import escape_untrusted
 
 __all__ = ["main"]
 
@@ -127,17 +128,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.save_reduced and not args.no_reduce:
         for path in args.paths:
             if _same_file(args.save_reduced, path):
-                print(
-                    f"evalint: refusing to overwrite input {path} with "
-                    f"--save-reduced {args.save_reduced}",
-                    file=sys.stderr,
+                _print_error(
+                    f"refusing to overwrite input {path} with "
+                    f"--save-reduced {args.save_reduced}"
                 )
                 return 1
 
     try:
         matrix, fmt = load_many(args.paths, args.format)
     except ImportError_ as exc:
-        print(f"evalint: {exc}", file=sys.stderr)
+        _print_error(exc)
         return 1
 
     audit = audit_matrix(
@@ -152,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             _write_reduced(args.save_reduced, audit.reduction.kept)
         except OutputError as exc:
-            print(f"evalint: {exc}", file=sys.stderr)
+            _print_error(exc)
             return 1
 
     if args.json:
@@ -173,6 +173,10 @@ def _source_name(paths: list[pathlib.Path]) -> str:
     if len(paths) == 1:
         return paths[0].name
     return f"{paths[0].name} +{len(paths) - 1} more"
+
+
+def _print_error(message: object) -> None:
+    print(f"evalint: {escape_untrusted(message)}", file=sys.stderr)
 
 
 def _same_file(left: pathlib.Path, right: pathlib.Path) -> bool:

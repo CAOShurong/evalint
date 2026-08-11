@@ -17,6 +17,7 @@ from .dedupe import THRESHOLD, Cluster, find_duplicates
 from .matrix import Matrix
 from .reduce import Reduction, reduce_set
 from .stats import ItemStats, SetStats, item_stats, set_stats
+from .terminal import escape_untrusted
 
 __all__ = ["Audit", "Palette", "audit_matrix", "render"]
 
@@ -116,7 +117,8 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
     summary = audit.summary
     matrix = audit.matrix
 
-    rows.append(palette.bold(f"evalint  {audit.source}"))
+    source = escape_untrusted(audit.source, ascii_only=ascii_only)
+    rows.append(palette.bold(f"evalint  {source}"))
     rows.append(
         "  "
         + palette.paint(
@@ -147,7 +149,13 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
             )
         )
     if audit.units_warning:
-        rows.append("  " + palette.paint(audit.units_warning, "warn"))
+        rows.append(
+            "  "
+            + palette.paint(
+                escape_untrusted(audit.units_warning, ascii_only=ascii_only),
+                "warn",
+            )
+        )
 
     # -- what the set can tell you ----------------------------------------
     rows.append("")
@@ -250,8 +258,9 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
             )
         )
         for stat in broken[:10]:
+            item_id = escape_untrusted(stat.item_id, ascii_only=ascii_only)
             rows.append(
-                f"  {palette.paint('BROKEN', 'bad')} {stat.item_id}"
+                f"  {palette.paint('BROKEN', 'bad')} {item_id}"
                 + palette.paint(
                     f"   discrimination {stat.discrimination:+.2f}"
                     f"{sep}chance {stat.chance:.3f}",
@@ -281,6 +290,7 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
     ranking = matrix.ranking()
     best = ranking[0][1] if ranking else 0.0
     for name, mean in ranking:
+        display_name = escape_untrusted(name, ascii_only=ascii_only)
         tie = ""
         if (
             summary.standard_error is not None
@@ -288,7 +298,9 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
             and abs(best - mean) < summary.standard_error
         ):
             tie = palette.paint("  tied with the leader", "warn")
-        rows.append(f"  {name:<24} {_bar(mean, 14, not ascii_only)} {mean:.3f}{tie}")
+        rows.append(
+            f"  {display_name:<24} {_bar(mean, 14, not ascii_only)} {mean:.3f}{tie}"
+        )
 
     return "\n".join(rows)
 
