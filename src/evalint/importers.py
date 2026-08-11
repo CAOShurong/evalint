@@ -349,10 +349,7 @@ def _from_records(records: list[dict]) -> Matrix:
         item_key = _first(flat, ITEM_KEYS)
         system_key = _first(flat, SYSTEM_KEYS)
         score_key = _first(flat, SCORE_KEYS)
-        if item_key is None or system_key is None or score_key is None:
-            continue
-        score = _as_score(score_key[1])
-        if score is None:
+        if item_key is None or system_key is None:
             continue
         text_key = _first(flat, TEXT_KEYS)
         expected_key = _first(flat, EXPECTED_KEYS)
@@ -364,6 +361,11 @@ def _from_records(records: list[dict]) -> Matrix:
                 expected=str(expected_key[1]) if expected_key else "",
             )
         )
+        if score_key is None:
+            continue
+        score = _as_score(score_key[1])
+        if score is None:
+            continue
         matrix.record(item_id, str(system_key[1]), score)
     return matrix
 
@@ -420,13 +422,15 @@ def _read_promptfoo(text: str) -> Matrix:
             if isinstance(prompt, dict):
                 prompt_text = str(prompt.get("raw") or prompt.get("label") or "")
             item_id = prompt_text
+        if not system or not item_id:
+            continue
+        matrix.add_item(Item(id=str(item_id), text=prompt_text))
         score = entry.get("score")
         if score is None:
             score = entry.get("success")
         score = _as_score(score)
-        if not system or not item_id or score is None:
+        if score is None:
             continue
-        matrix.add_item(Item(id=str(item_id), text=prompt_text))
         matrix.record(str(item_id), str(system), score)
     return matrix
 
@@ -457,13 +461,13 @@ def _read_openai_evals(text: str) -> Matrix:
         data = event.get("data")
         if not isinstance(data, dict):
             continue
-        score = _as_score(data.get("correct", data.get("score")))
-        if score is None:
-            continue
         item_id = str(event.get("sample_id") or data.get("sample_id") or "")
         if not item_id:
             continue
         matrix.add_item(Item(id=item_id, text=str(data.get("prompt", ""))[:400]))
+        score = _as_score(data.get("correct", data.get("score")))
+        if score is None:
+            continue
         matrix.record(item_id, system, score)
     return matrix
 

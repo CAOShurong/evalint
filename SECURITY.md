@@ -30,8 +30,10 @@ multi-tenant environment. Files must be valid UTF-8; an optional leading UTF-8
 BOM is accepted, while malformed bytes fail closed rather than being replaced
 inside identifiers. Scores must be finite numbers in `[0, 1]`; out-of-range,
 `NaN`, and infinite values fail before statistics are computed instead of
-being silently clamped. A successful audit is a statistical diagnostic, not
-a security verdict, proof that answer keys are correct, or proof that the
+being silently clamped. Blank and unparseable scores remain missing, but an
+item with a recognizable id remains in the coverage denominator even when all
+of its scores are missing. A successful audit is a statistical diagnostic,
+not a security verdict, proof that answer keys are correct, or proof that the
 evaluation process is free from data leakage or prompt injection.
 
 The alias check and replacement are a local accidental-loss boundary, not a
