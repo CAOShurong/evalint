@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.27] - 2026-08-12
+
+### Fixed
+
+- Preserve a distinct Promptfoo provider label alongside provider id and
+  `promptId`, so separately configured instances of the same provider are not
+  silently averaged as repeat measurements.
+- Keep a missing label or the common default label equal to provider id on the
+  existing identity, while genuine repeats with the same distinct label still
+  aggregate.
+- Reject a present null, blank, boolean, or non-string label in current
+  Promptfoo rows without echoing the untrusted value.
+
+### Added
+
+- Document a real local Promptfoo reproduction, migration boundary, maintained
+  alternatives, false-positive and false-negative cases, and the fact that a
+  label distinguishes configurations but does not prove their contents.
+
 ## [0.2.26] - 2026-08-12
 
 ### Fixed

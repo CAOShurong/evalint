@@ -84,15 +84,18 @@ producer is authentic, that providers really ran, or that scores and identities
 are semantically correct.
 
 Current Promptfoo rows with a `promptId` use a canonical JSON system identity
-containing the provider and prompt id. JSON string escaping prevents control
-characters in either identifier from becoming raw terminal controls, and
-rendered prompt text and labels are not copied into that identity. A present
-`promptId` must be a nonblank string; invalid values fail without being echoed.
-Rows with no `promptId` retain the legacy provider-only behavior, which can
-still collapse distinct prompt variants in an older or nonconforming export.
-The same can happen when an upstream producer reuses one prompt id for changed
-content, or reuses one provider id for materially different configurations.
-EvalInt does not authenticate these identifiers or prove that the producer's
+containing the provider id, prompt id, and a provider label when that label is
+distinct from the id. JSON string escaping prevents control characters in
+these untrusted identifiers from becoming raw terminal controls. Rendered
+prompt text and provider configuration are not copied into the identity. A
+present `promptId` or provider label must be a nonblank string; invalid values
+fail without being echoed. Rows with no `promptId` retain the legacy
+provider-only behavior, which can still collapse distinct prompt variants in
+an older or nonconforming export. The same can happen when an upstream producer
+reuses one prompt id for changed content or one label for materially different
+provider configurations. Conversely, different labels split systems even when
+their hidden configuration is identical. EvalInt does not authenticate these
+identifiers, inspect credentials or configuration, or prove that the producer's
 identity assignment was correct.
 
 JSON that exceeds Python's safe decoder nesting boundary also fails with a

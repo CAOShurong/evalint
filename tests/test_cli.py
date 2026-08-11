@@ -140,6 +140,59 @@ def test_promptfoo_jsonl_runs_through_the_real_cli_entry_point(tmp_path, capsys)
     assert captured.err == ""
 
 
+def test_promptfoo_provider_labels_remain_distinct_through_the_cli(tmp_path, capsys):
+    records = []
+    for test_idx in range(2):
+        for prompt_id in ("prompt-a", "prompt-b"):
+            for label, score in (("pass-config", 1), ("fail-config", 0)):
+                records.append(
+                    {
+                        "testIdx": test_idx,
+                        "promptIdx": 0,
+                        "testCase": {"vars": {"case": f"q{test_idx + 1}"}},
+                        "promptId": prompt_id,
+                        "provider": {"id": "local:same-id", "label": label},
+                        "prompt": {"raw": "question"},
+                        "success": bool(score),
+                        "score": score,
+                    }
+                )
+    path = _write(
+        tmp_path,
+        "\n".join(json.dumps(record) for record in records),
+        "provider-variants.jsonl",
+    )
+
+    assert main([str(path), "--json"]) == 0
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["summary"]["systems"] == 4
+    assert report["summary"]["observations"] == 8
+    assert sorted(entry["mean"] for entry in report["ranking"]) == [0, 0, 1, 1]
+    assert captured.err == ""
+
+
+def test_invalid_promptfoo_provider_label_exits_one_without_echo(tmp_path, capsys):
+    record = {
+        "testIdx": 0,
+        "promptIdx": 0,
+        "testCase": {"vars": {"case": "q1"}},
+        "promptId": "prompt-a",
+        "provider": {"id": "local:same-id", "label": None},
+        "prompt": {"raw": "question"},
+        "success": True,
+        "score": 1,
+    }
+    path = _write(tmp_path, json.dumps(record), "invalid-provider-label.jsonl")
+
+    assert main([str(path), "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "invalid provider label" in captured.err
+    assert "null" not in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_malformed_promptfoo_jsonl_exits_one_without_a_subset_report(tmp_path, capsys):
     lines = _promptfoo_jsonl().splitlines()
     lines[1] = '{"testIdx":0,"promptIdx":1,"provider":'

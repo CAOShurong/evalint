@@ -651,15 +651,25 @@ def _starts_with_promptfoo_jsonl_result(text: str) -> bool:
 
 
 def _promptfoo_system_id(provider: str, entry: dict, location: str) -> str:
-    """Keep the prompt version in current Promptfoo comparison identities."""
+    """Keep current Promptfoo prompt and provider variants distinct."""
     if "promptId" not in entry:
         # Older Promptfoo envelopes did not carry a prompt id on every result.
         return provider
     prompt_id = entry["promptId"]
     if not isinstance(prompt_id, str) or not prompt_id.strip():
         raise ImportError_(f"{location} has an invalid promptId")
+    identity_fields = {"prompt_id": prompt_id, "provider": provider}
+    provider_value = entry.get("provider")
+    if isinstance(provider_value, dict) and "label" in provider_value:
+        provider_label = provider_value["label"]
+        if not isinstance(provider_label, str) or not provider_label.strip():
+            raise ImportError_(f"{location} has an invalid provider label")
+        # Promptfoo commonly repeats the id as the default label. Only a
+        # distinct label identifies a separately configured provider variant.
+        if provider_label != provider:
+            identity_fields["provider_label"] = provider_label
     identity = json.dumps(
-        {"prompt_id": prompt_id, "provider": provider},
+        identity_fields,
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
