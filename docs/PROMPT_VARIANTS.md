@@ -51,13 +51,15 @@ remain unchanged.
 
 ## Resulting contract
 
-- A current row with `promptId` becomes the canonical system string
-  `promptfoo:{"prompt_id":"...","provider":"..."}`. Canonical JSON avoids
-  delimiter ambiguity and escapes control characters.
+- A current row with `promptId` becomes a canonical system string containing
+  prompt and provider ids. Since v0.2.27, a provider label distinct from its id
+  is also included; see
+  [`PROMPTFOO_PROVIDER_VARIANTS.md`](PROMPTFOO_PROVIDER_VARIANTS.md).
+  Canonical JSON avoids delimiter ambiguity and escapes control characters.
 - The exact opaque `promptId` is used; rendered prompt text and prompt labels
-  are not included in the system identity.
-- The same provider and prompt id across repeated rows remains one system, so
-  genuine stochastic repeats still aggregate as repeats.
+  are not included in the system identity. A distinct provider label is.
+- The same provider id, provider label, and prompt id across repeated rows
+  remains one system, so genuine stochastic repeats still aggregate as repeats.
 - Different providers using the same prompt remain different systems, and one
   provider using different prompt ids becomes different systems.
 - A present null, blank, boolean, or non-string `promptId` exits `1` before a
@@ -76,12 +78,13 @@ cannot detect the difference. If the key is missing entirely, legacy fallback
 can still collapse variants; compatibility is preferred because old Promptfoo
 documents did not place the id on every row.
 
-Provider id remains the provider component. Two materially different provider
-configurations that reuse the same provider id and prompt id can still collapse;
-labels and hidden configuration are not treated as proof of independence in
-this release. Conversely, two distinct prompt ids are treated as distinct even
-if their rendered text happens to match. That can split semantically equivalent
-variants, but silently merging producer-declared versions would corrupt the
+Provider id remains the base provider component. Two materially different
+provider configurations that reuse the same provider id, provider label, and
+prompt id can still collapse; hidden configuration is not treated as proof of
+independence. Conversely, two distinct prompt ids are treated as distinct even
+if their rendered text happens to match, and two distinct provider labels split
+even if their hidden configuration is identical. Those can be false-positive
+distinctions, but silently merging producer-declared variants would corrupt the
 comparison in the opposite and less observable direction.
 
 The composite id is structural, not authentication. A clean audit does not

@@ -1081,6 +1081,61 @@ def test_promptfoo_keeps_prompt_versions_on_the_same_provider_separate():
     assert all("untrusted rendered prompt" not in system for system in matrix.systems)
 
 
+def test_promptfoo_keeps_labeled_configurations_of_same_provider_separate():
+    records = []
+    for test_idx, case in enumerate(("q1", "q2")):
+        for prompt_id in ("prompt-a", "prompt-b"):
+            for label, score in (("pass-config", 1), ("fail-config", 0)):
+                records.append(
+                    {
+                        "testIdx": test_idx,
+                        "promptIdx": 0,
+                        "testCase": {"vars": {"case": case}},
+                        "promptId": prompt_id,
+                        "provider": {"id": "local:same-id", "label": label},
+                        "prompt": {"raw": "untrusted rendered prompt"},
+                        "success": bool(score),
+                        "score": score,
+                    }
+                )
+
+    matrix, fmt = load_text("\n".join(json.dumps(record) for record in records))
+
+    assert fmt == "promptfoo"
+    assert len(matrix.systems) == 4
+    assert matrix.observations == 8
+    assert sorted(matrix.scores_for_item('{"case": "q1"}').values()) == [
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+    ]
+    assert all('"provider_label"' in system for system in matrix.systems)
+
+
+def test_promptfoo_repeats_with_the_same_provider_label_still_aggregate():
+    records = [
+        {
+            "testIdx": 0,
+            "promptIdx": 0,
+            "testCase": {"vars": {"case": "q1"}},
+            "promptId": "prompt-a",
+            "provider": {"id": "local:same-id", "label": "same-config"},
+            "prompt": {"raw": "question"},
+            "success": bool(score),
+            "score": score,
+        }
+        for score in (1, 0)
+    ]
+
+    matrix, _ = parse_text("\n".join(json.dumps(record) for record in records))
+
+    assert len(matrix.systems) == 1
+    assert matrix.observations == 1
+    assert matrix.repetitions('{"case": "q1"}', matrix.systems[0]) == 2
+    assert matrix.score('{"case": "q1"}', matrix.systems[0]) == 0.5
+
+
 def test_promptfoo_legacy_results_without_prompt_id_keep_provider_identity():
     payload = {
         "results": [
@@ -1123,13 +1178,35 @@ def test_promptfoo_rejects_an_invalid_present_prompt_id(prompt_id):
     assert "Promptfoo JSONL line 1 has an invalid promptId" in str(caught.value)
 
 
+@pytest.mark.parametrize("provider_label", (None, "", "   ", 7, True))
+def test_promptfoo_rejects_an_invalid_present_provider_label(provider_label):
+    record = {
+        "testIdx": 0,
+        "promptIdx": 0,
+        "testCase": {"vars": {"case": "q1"}},
+        "promptId": "prompt-a",
+        "provider": {"id": "alpha", "label": provider_label},
+        "prompt": {"raw": "question"},
+        "success": True,
+        "score": 1,
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(record))
+
+    assert "Promptfoo JSONL line 1 has an invalid provider label" in str(caught.value)
+
+
 def test_promptfoo_composite_system_identity_escapes_control_characters():
     record = {
         "testIdx": 0,
         "promptIdx": 0,
         "testCase": {"vars": {"case": "q1"}},
         "promptId": "prompt\x1b[2Jvariant",
-        "provider": {"id": "provider\x1b]0;title"},
+        "provider": {
+            "id": "provider\x1b]0;title",
+            "label": "variant\x1b[31mred",
+        },
         "prompt": {"raw": "question"},
         "success": True,
         "score": 1,
@@ -1140,6 +1217,7 @@ def test_promptfoo_composite_system_identity_escapes_control_characters():
     assert fmt == "promptfoo"
     assert "\x1b" not in matrix.systems[0]
     assert "\\u001b" in matrix.systems[0]
+    assert '"provider_label"' in matrix.systems[0]
 
 
 def test_promptfoo_jsonl_uses_test_index_when_memory_projections_strip_identity_text():

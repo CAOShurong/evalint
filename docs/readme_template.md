@@ -154,12 +154,15 @@ EvalInt uses the export-local `testIdx` as the item identity. See
 [`docs/PROMPTFOO_JSONL.md`](docs/PROMPTFOO_JSONL.md) and
 [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
 
-Current Promptfoo results identify a comparison system by both provider and
-`promptId`. This keeps prompt A/B variants on the same model separate instead
-of averaging them as stochastic repeats. The canonical system id includes no
-rendered prompt text. Legacy Promptfoo rows without `promptId` retain their
-provider-only identity; see
-[`docs/PROMPT_VARIANTS.md`](docs/PROMPT_VARIANTS.md).
+Current Promptfoo results identify a comparison system by provider id, any
+distinct provider label, and `promptId`. This keeps prompt A/B variants and
+separately labelled configurations of the same provider apart instead of
+averaging them as stochastic repeats. A missing label or the common default
+label equal to the provider id keeps the shorter identity; rendered prompt text
+and provider configuration are never copied into it. Legacy Promptfoo rows
+without `promptId` retain their provider-only identity; see
+[`docs/PROMPT_VARIANTS.md`](docs/PROMPT_VARIANTS.md) and
+[`docs/PROMPTFOO_PROVIDER_VARIANTS.md`](docs/PROMPTFOO_PROVIDER_VARIANTS.md).
 
 JSON that exceeds Python's safe nesting boundary exits `1` with a bounded
 message and no traceback across automatic detection and every JSON reader.
