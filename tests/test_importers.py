@@ -198,6 +198,7 @@ def _current_promptfoo_jsonl() -> str:
                     "testIdx": test_idx,
                     "promptIdx": prompt_idx,
                     "testCase": {"vars": {"case": case}},
+                    "promptId": "prompt-answer-v1",
                     "provider": {"id": provider, "label": provider},
                     "prompt": {"raw": "Answer {{case}}"},
                     "success": bool(score),
@@ -1027,10 +1028,13 @@ def test_current_promptfoo_jsonl_output_is_read_automatically_and_when_forced():
 
         assert fmt == "promptfoo"
         assert matrix.item_ids == ['{"case": "q1"}', '{"case": "q2"}']
-        assert matrix.systems == ["openai:gpt-4o", "anthropic:claude"]
+        assert matrix.systems == [
+            'promptfoo:{"prompt_id":"prompt-answer-v1","provider":"openai:gpt-4o"}',
+            'promptfoo:{"prompt_id":"prompt-answer-v1","provider":"anthropic:claude"}',
+        ]
         assert matrix.observations == 4
-        assert matrix.score('{"case": "q1"}', "openai:gpt-4o") == 1
-        assert matrix.score('{"case": "q1"}', "anthropic:claude") == 0
+        assert matrix.score('{"case": "q1"}', matrix.systems[0]) == 1
+        assert matrix.score('{"case": "q1"}', matrix.systems[1]) == 0
 
 
 def test_current_promptfoo_v3_json_results_remain_supported():
@@ -1048,6 +1052,94 @@ def test_current_promptfoo_v3_json_results_remain_supported():
 
     assert fmt == "promptfoo"
     assert matrix.observations == 4
+
+
+def test_promptfoo_keeps_prompt_versions_on_the_same_provider_separate():
+    records = []
+    for test_idx, case in enumerate(("q1", "q2")):
+        for provider in ("alpha", "beta"):
+            for prompt_id, score in (("prompt-good", 1), ("prompt-bad", 0)):
+                records.append(
+                    {
+                        "testIdx": test_idx,
+                        "promptIdx": 0 if prompt_id == "prompt-good" else 1,
+                        "testCase": {"vars": {"case": case}},
+                        "promptId": prompt_id,
+                        "provider": {"id": provider},
+                        "prompt": {"raw": "untrusted rendered prompt"},
+                        "success": bool(score),
+                        "score": score,
+                    }
+                )
+
+    matrix, fmt = load_text("\n".join(json.dumps(record) for record in records))
+
+    assert fmt == "promptfoo"
+    assert len(matrix.systems) == 4
+    assert matrix.observations == 8
+    assert set(matrix.scores_for_item('{"case": "q1"}').values()) == {0.0, 1.0}
+    assert all("untrusted rendered prompt" not in system for system in matrix.systems)
+
+
+def test_promptfoo_legacy_results_without_prompt_id_keep_provider_identity():
+    payload = {
+        "results": [
+            {
+                "provider": provider,
+                "testCase": {"vars": {"case": case}},
+                "score": score,
+            }
+            for case in ("q1", "q2")
+            for provider, score in (("alpha", 1), ("beta", 0))
+        ]
+    }
+
+    matrix, fmt = load_text(json.dumps(payload))
+
+    assert fmt == "promptfoo"
+    assert matrix.systems == ["alpha", "beta"]
+
+
+@pytest.mark.parametrize("prompt_id", (None, "", "   ", 7, True))
+def test_promptfoo_rejects_an_invalid_present_prompt_id(prompt_id):
+    records = []
+    for provider in ("alpha", "beta"):
+        records.append(
+            {
+                "testIdx": 0,
+                "promptIdx": 0,
+                "testCase": {"vars": {"case": "q1"}},
+                "promptId": prompt_id,
+                "provider": {"id": provider},
+                "prompt": {"raw": "question"},
+                "success": True,
+                "score": 1,
+            }
+        )
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text("\n".join(json.dumps(record) for record in records))
+
+    assert "Promptfoo JSONL line 1 has an invalid promptId" in str(caught.value)
+
+
+def test_promptfoo_composite_system_identity_escapes_control_characters():
+    record = {
+        "testIdx": 0,
+        "promptIdx": 0,
+        "testCase": {"vars": {"case": "q1"}},
+        "promptId": "prompt\x1b[2Jvariant",
+        "provider": {"id": "provider\x1b]0;title"},
+        "prompt": {"raw": "question"},
+        "success": True,
+        "score": 1,
+    }
+
+    matrix, fmt = parse_text(json.dumps(record))
+
+    assert fmt == "promptfoo"
+    assert "\x1b" not in matrix.systems[0]
+    assert "\\u001b" in matrix.systems[0]
 
 
 def test_promptfoo_jsonl_uses_test_index_when_memory_projections_strip_identity_text():

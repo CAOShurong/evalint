@@ -83,6 +83,18 @@ clean audit does not prove that every expected result was exported, that the
 producer is authentic, that providers really ran, or that scores and identities
 are semantically correct.
 
+Current Promptfoo rows with a `promptId` use a canonical JSON system identity
+containing the provider and prompt id. JSON string escaping prevents control
+characters in either identifier from becoming raw terminal controls, and
+rendered prompt text and labels are not copied into that identity. A present
+`promptId` must be a nonblank string; invalid values fail without being echoed.
+Rows with no `promptId` retain the legacy provider-only behavior, which can
+still collapse distinct prompt variants in an older or nonconforming export.
+The same can happen when an upstream producer reuses one prompt id for changed
+content, or reuses one provider id for materially different configurations.
+EvalInt does not authenticate these identifiers or prove that the producer's
+identity assignment was correct.
+
 JSON that exceeds Python's safe decoder nesting boundary also fails with a
 bounded import error across automatic detection and every JSON reader, without
 echoing input content or printing a traceback. EvalInt does not raise the
