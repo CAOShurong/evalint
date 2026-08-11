@@ -537,6 +537,75 @@ def test_native_matrix_accepts_integer_valued_json_repeat_numbers():
 
 
 @pytest.mark.parametrize(
+    ("metadata", "problem"),
+    (
+        ({"text": None}, "text must be a string"),
+        ({"text": 42}, "text must be a string"),
+        ({"expected": None}, "expected must be a string"),
+        ({"expected": 42}, "expected must be a string"),
+        ({"tags": "safety"}, "tags must be an array"),
+        ({"tags": {"safety": True}}, "tags must be an array"),
+        ({"tags": None}, "tags must be an array"),
+        ({"tags": ["safety", None]}, "tags[2] must be a string"),
+        ({"tags": ["safety", 42]}, "tags[2] must be a string"),
+    ),
+)
+def test_native_matrix_refuses_lossy_item_metadata(metadata, problem):
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {
+                "id": "q1",
+                **metadata,
+                "scores": {"alpha": 1, "beta": 0},
+            }
+        ],
+    }
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(json.dumps(raw), "matrix")
+
+    assert problem in str(caught.value)
+    assert "matrix items[1]" in str(caught.value)
+
+
+def test_native_matrix_accepts_omitted_and_explicit_empty_item_metadata():
+    raw = {
+        "schema": "evalint/matrix-v1",
+        "systems": ["alpha", "beta"],
+        "items": [
+            {"id": "omitted", "scores": {"alpha": 1, "beta": 0}},
+            {
+                "id": "empty",
+                "text": "",
+                "expected": "",
+                "tags": [],
+                "scores": {"alpha": 0, "beta": 1},
+            },
+            {
+                "id": "labeled",
+                "text": "Question",
+                "expected": "Answer",
+                "tags": ["safety", "multilingual"],
+                "scores": {"alpha": 1, "beta": 1},
+            },
+        ],
+    }
+
+    matrix, _ = parse_text(json.dumps(raw), "matrix")
+
+    assert matrix.items["omitted"].text == ""
+    assert matrix.items["omitted"].expected == ""
+    assert matrix.items["omitted"].tags == ()
+    assert matrix.items["empty"].text == ""
+    assert matrix.items["empty"].expected == ""
+    assert matrix.items["empty"].tags == ()
+    assert matrix.items["labeled"].tags == ("safety", "multilingual")
+    assert matrix.as_dict()["items"][2]["tags"] == ["safety", "multilingual"]
+
+
+@pytest.mark.parametrize(
     ("schema_fields", "problem"),
     (
         ({}, "schema is missing"),

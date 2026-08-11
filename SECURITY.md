@@ -91,6 +91,13 @@ an explicit `--format matrix` selects the reader but cannot override this
 version gate. This prevents an unknown future format from being silently
 interpreted with current semantics. It does not authenticate the marker or
 prove that the producer actually followed the named contract.
+Native item `text` and `expected` properties must be strings when present, and
+`tags` must be an array containing only strings. This prevents JSON null and
+other types from being coerced into invented prompt or answer text, and keeps a
+single tag string from becoming character labels. Omitted properties keep their
+empty defaults. This type check does not prove that metadata is true, complete,
+correctly attached, or safe for a different display context; tags are not used
+by the current statistical audit.
 
 Human-readable reports and CLI error details encode imported identifiers,
 system names, source paths, and other untrusted labels before writing them to

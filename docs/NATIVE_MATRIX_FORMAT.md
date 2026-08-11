@@ -66,6 +66,10 @@ code is copied or linked into EvalInt.
   `evalint/matrix-v1`; see [the version contract](NATIVE_SCHEMA_VERSION.md).
 - `systems` and `items` are JSON arrays. Every system identifier and item `id`
   is a string containing at least one non-whitespace character.
+- Optional item `text` and `expected` values are strings, while `tags` is an
+  array of strings. Missing properties retain the writer's empty defaults;
+  null or other mismatched types fail instead of being coerced. See
+  [the item metadata contract](NATIVE_ITEM_METADATA.md).
 - System identifiers are unique within `systems`; item identifiers are unique
   within `items`. Diagnostics identify the one-based array position but do not
   echo the identifier, score, prompt, answer, or other row data.

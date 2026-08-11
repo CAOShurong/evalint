@@ -169,6 +169,11 @@ The native reader also requires the exact `evalint/matrix-v1` schema marker;
 `--format matrix` selects that reader but cannot make a missing or future
 version compatible. See
 [`docs/NATIVE_SCHEMA_VERSION.md`](docs/NATIVE_SCHEMA_VERSION.md).
+Native item `text` and `expected` values, when present, must be strings, and
+`tags` must be an array of strings. JSON null and other mismatched types fail
+instead of becoming invented text or character-by-character labels; omitted
+properties keep their empty defaults. See
+[`docs/NATIVE_ITEM_METADATA.md`](docs/NATIVE_ITEM_METADATA.md).
 
 Path-based parse errors name the failing input as well as the record location.
 When auto-detected files use more than one representation, JSON reports use a
