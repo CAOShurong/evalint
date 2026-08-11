@@ -7,6 +7,8 @@ with no problems in it, which reads as "your eval set is clean".
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 import pathlib
@@ -28,6 +30,61 @@ from evalint.importers import (
 def test_detects_a_long_csv():
     text = "item_id,system,score\na,gpt,1\na,claude,0\n"
     assert detect_format(text) == "csv"
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    (
+        "What is 2, plus 2?",
+        "What is 2,\nplus 2?",
+        'Say "hello", please',
+    ),
+)
+def test_detects_quoted_delimiters_and_newlines_as_csv(prompt):
+    stream = io.StringIO()
+    writer = csv.writer(stream, lineterminator="\n")
+    writer.writerow(("item_id", "text", "system", "score"))
+    writer.writerow(("q1", prompt, "alpha", 1))
+    writer.writerow(("q1", prompt, "beta", 0))
+
+    text = stream.getvalue()
+    assert detect_format(text) == "csv"
+    matrix, fmt = load_text(text)
+    assert fmt == "csv"
+    assert matrix.items["q1"].text == prompt
+
+
+def test_an_unterminated_csv_quote_fails_even_when_csv_is_forced():
+    text = (
+        "item_id,text,system,score\n"
+        "q1,ordinary,alpha,1\n"
+        "q1,ordinary,beta,0\n"
+        'q2,"unterminated prompt,alpha,1\n'
+    )
+
+    assert detect_format(text) == "unknown"
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "csv")
+
+    message = str(caught.value)
+    assert "CSV" in message
+    assert "line" in message
+
+
+def test_extra_csv_fields_fail_instead_of_leaking_an_internal_error():
+    text = (
+        "item_id,text,system,score\n"
+        "q1,ordinary,alpha,1\n"
+        "q1,ordinary,beta,0,unexpected\n"
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "csv")
+
+    message = str(caught.value)
+    assert "CSV" in message
+    assert "extra field" in message
+    assert "line" in message
 
 
 def test_utf8_bom_before_the_first_header_is_accepted(tmp_path):

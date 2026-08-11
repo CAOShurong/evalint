@@ -38,6 +38,15 @@ successful audit is a statistical diagnostic, not a security verdict, proof
 that answer keys are correct, or proof that the evaluation process is free
 from data leakage or prompt injection.
 
+CSV detection parses up to five nonblank logical records under the supported
+comma, tab, semicolon, and pipe delimiters, so delimiters and newlines inside
+double-quoted fields do not split a record. The selected reader then parses the
+whole file strictly: unterminated quotes and fields beyond the header width
+fail with a bounded import error. Exotic quoting or escape conventions can
+still be rejected, and a structurally valid CSV can still contain wrong
+headers, omitted rows, duplicated exports, or misleading values. Successful
+detection is not a completeness, provenance, or semantic-validity check.
+
 Malformed JSONL and OpenAI Evals records fail at the first invalid line with a
 bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.

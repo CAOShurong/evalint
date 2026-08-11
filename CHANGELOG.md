@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] - 2026-08-11
+
+### Fixed
+
+- Auto-detect valid CSV files whose quoted prompt or answer fields contain the
+  delimiter, doubled quotes, or embedded newlines. Earlier releases counted
+  separators on physical lines and rejected these standard records as unknown
+  even though `--format csv` could parse them.
+- Refuse unterminated quoted CSV fields with a bounded line-numbered import
+  error, including when CSV is forced, instead of accepting a partial record.
+- Refuse rows with more fields than the header instead of ignoring their
+  overflow or exposing an internal error.
+
+### Added
+
+- Document CSV dialect alternatives, detection limits, and why automatic
+  recognition is not proof that an export is complete or semantically valid.
+
 ## [0.2.11] - 2026-08-11
 
 ### Fixed
@@ -242,3 +260,4 @@ First release.
 [0.2.9]: https://github.com/CAOShurong/evalint/compare/v0.2.8...v0.2.9
 [0.2.10]: https://github.com/CAOShurong/evalint/compare/v0.2.9...v0.2.10
 [0.2.11]: https://github.com/CAOShurong/evalint/compare/v0.2.10...v0.2.11
+[0.2.12]: https://github.com/CAOShurong/evalint/compare/v0.2.11...v0.2.12

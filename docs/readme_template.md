@@ -116,6 +116,12 @@ the byte position instead of silently changing an item or system id. EvalInt
 does not guess legacy encodings; see [`docs/ENCODING.md`](docs/ENCODING.md) for
 the safety decision and conversion options.
 
+Quoted CSV fields may contain commas or the selected delimiter, doubled quote
+characters, and embedded newlines. Detection reads logical CSV records rather
+than counting separators on physical lines. Unterminated quotes and rows wider
+than the header exit `1` without a partial report; see
+[`docs/CSV_QUOTING.md`](docs/CSV_QUOTING.md).
+
 Several files are merged on the item id. The same system name always means the
 same logical system: repeated item scores are averaged, while disjoint items
 fill out the same column. Distinct models or prompt versions must therefore

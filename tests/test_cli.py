@@ -439,3 +439,22 @@ def test_duplicate_cli_input_fails_without_a_report_or_traceback(tmp_path, capsy
     assert "duplicate input" in captured.err
     assert "same physical file" in captured.err
     assert "Traceback" not in captured.err
+
+
+def test_malformed_quoted_csv_fails_without_a_report_or_traceback(tmp_path, capsys):
+    path = _write(
+        tmp_path,
+        "item_id,text,system,score\n"
+        "q1,ordinary,alpha,1\n"
+        "q1,ordinary,beta,0\n"
+        'q2,"unterminated prompt,alpha,1\n',
+        "malformed.csv",
+    )
+
+    assert main([str(path), "--format", "csv", "--json"]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "CSV syntax error" in captured.err
+    assert "line" in captured.err
+    assert "Traceback" not in captured.err
