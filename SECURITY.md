@@ -63,10 +63,25 @@ variants, and different aliases such as `item_id` and `id` remain distinct
 headers; EvalInt does not infer that a producer intended them to be one column.
 This check is structural, not a full schema or meaning validator.
 
-Malformed JSONL and OpenAI Evals records fail at the first invalid line with a
-bounded line/column error. They are not skipped or auto-repaired, because doing
-so could remove scored items or systems and leave a plausible subset report.
-Promptfoo JSON syntax errors use the same no-traceback boundary.
+Malformed generic, Promptfoo, and OpenAI Evals JSONL records fail at the first
+invalid line with a bounded line/column error. They are not skipped or
+auto-repaired, because doing so could remove scored items or systems and leave
+a plausible subset report. Promptfoo JSONL rows must retain the current
+per-result discriminator fields; a metadata or checkpoint row fails instead of
+being omitted. Automatic classification can still produce a false positive if
+unrelated JSONL happens to use every discriminator field, or a false negative
+if a future Promptfoo schema renames one. Use an explicit `--format` when the
+producer is known, and treat rejection after a schema change as a compatibility
+failure rather than evidence that the artifact is invalid.
+
+Promptfoo's memory-saving projections can remove test variables and prompt
+text. In that case EvalInt uses `testIdx`, which is unique only inside that
+export and is not a durable cross-run identifier. The reader processes lines
+strictly but the caller still reads the complete file into memory; JSONL support
+is format compatibility, not a file-size or resource-exhaustion guarantee. A
+clean audit does not prove that every expected result was exported, that the
+producer is authentic, that providers really ran, or that scores and identities
+are semantically correct.
 
 JSON that exceeds Python's safe decoder nesting boundary also fails with a
 bounded import error across automatic detection and every JSON reader, without

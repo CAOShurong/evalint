@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  evalint results.csv\n"
-            "  evalint promptfoo-output.json\n"
+            "  evalint promptfoo-output.jsonl\n"
             "  evalint results.jsonl --json\n"
             "  evalint results.csv --fail-under 0.8\n"
             "  evalint gpt-4o.jsonl claude.jsonl llama.jsonl\n"
