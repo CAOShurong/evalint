@@ -61,3 +61,7 @@ Repeated object member names are a separate structural ambiguity: a parser may
 accept them even though implementations disagree about which value survives.
 EvalInt rejects them at decode time; see
 [the duplicate-member contract](DUPLICATE_JSON_MEMBERS.md).
+Distinct nested paths can also expose conflicting values under one recognized
+generic field name even when every JSON object is syntactically valid and uses
+unique members. EvalInt refuses that semantic flattening ambiguity; see
+[the nested-field conflict contract](NESTED_FIELD_CONFLICTS.md).
