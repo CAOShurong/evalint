@@ -19,7 +19,7 @@ import io
 import json
 import pathlib
 
-from .matrix import InvalidScore, Item, Matrix
+from .matrix import ConflictingItem, InvalidScore, Item, Matrix
 
 __all__ = [
     "ImportError_",
@@ -217,7 +217,7 @@ def load_many(paths, fmt: str = "auto") -> tuple[Matrix, str]:
     used_formats: list[str] = []
     for path in paths:
         matrix, used = _parse_file(path, fmt)
-        parts.append((path.stem, matrix))
+        parts.append((str(path), matrix))
         used_formats.append(used)
     merged = merge(parts)
     _require_comparable(merged, paths)
@@ -262,7 +262,7 @@ def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
         )
     try:
         matrix = reader(text)
-    except InvalidScore as exc:
+    except (ConflictingItem, InvalidScore) as exc:
         raise ImportError_(str(exc)) from exc
     if not matrix.items:
         raise ImportError_(f"read the file as {fmt}, but found no eval items in it")
@@ -290,9 +290,20 @@ def merge(parts: list[tuple[str, Matrix]]) -> Matrix:
     versions must carry distinct system names in the source data.
     """
     out = Matrix()
-    for _, matrix in parts:
+    origins: dict[str, str] = {}
+    for source, matrix in parts:
         for item in matrix.items.values():
-            out.add_item(item)
+            try:
+                out.add_item(item)
+            except ConflictingItem as exc:
+                first_source = origins.get(item.id)
+                first_note = (
+                    f"; first seen in {first_source}"
+                    if first_source is not None
+                    else ""
+                )
+                raise ImportError_(f"{source}: {exc}{first_note}") from exc
+            origins.setdefault(item.id, source)
         for system in matrix.systems:
             out.add_system(system)
             for item_id, score in matrix.scores_for_system(system).items():

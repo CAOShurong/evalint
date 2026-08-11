@@ -48,6 +48,11 @@ sign, archive, or authenticate an input, and a successful report does not
 prove that the named files are the producer's original exports. Mixed-format
 labels are deterministic summaries, not full data-lineage records.
 
+Conflicting nonempty prompt text or expected answers for one item id fail
+closed before statistics are computed. The error names the item id and source
+paths but does not echo the conflicting content. Id-only exports cannot expose
+content drift, and this comparison is not a dataset-version or integrity proof.
+
 The alias check and replacement are a local accidental-loss boundary, not a
 defence against a hostile process changing filesystem links concurrently.
 Filesystem and operating-system crash guarantees also vary; no claim is made

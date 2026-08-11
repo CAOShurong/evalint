@@ -16,7 +16,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-__all__ = ["InvalidScore", "Item", "Matrix", "System"]
+__all__ = ["ConflictingItem", "InvalidScore", "Item", "Matrix", "System"]
+
+
+class ConflictingItem(ValueError):
+    """One item id was attached to incompatible identifying metadata."""
 
 
 class InvalidScore(ValueError):
@@ -76,10 +80,25 @@ class Matrix:
         if existing is None:
             self.items[item.id] = item
             return item
-        # A later record may carry text an earlier one lacked; keep the
-        # richer version rather than the first one seen.
-        if not existing.text and item.text:
-            existing.text = item.text
+
+        # Readers use the id as a display fallback when no prompt text exists.
+        # It is missing metadata, not evidence that the prompt literally was
+        # the id, so a later source may still fill it in.
+        existing_text = "" if existing.text == existing.id else existing.text
+        incoming_text = "" if item.text == item.id else item.text
+        if existing_text and incoming_text and existing_text != incoming_text:
+            raise ConflictingItem(
+                f"item {item.id!r} has conflicting text; the same item id must "
+                "identify the same eval case in every row and file"
+            )
+        if not existing_text and incoming_text:
+            existing.text = incoming_text
+
+        if existing.expected and item.expected and existing.expected != item.expected:
+            raise ConflictingItem(
+                f"item {item.id!r} has conflicting expected answers; the same "
+                "item id must identify the same eval case in every row and file"
+            )
         if not existing.expected and item.expected:
             existing.expected = item.expected
         if item.tags and not existing.tags:
