@@ -52,6 +52,9 @@ class Audit:
         summary = self.summary.as_dict()
         summary["runs"] = self.matrix.runs
         summary["measurements"] = self.matrix.measurements
+        summary["observations"] = self.matrix.observations
+        summary["expected_observations"] = len(self.matrix) * len(self.matrix.systems)
+        summary["coverage"] = round(self.matrix.density, 4)
         return {
             "schema": "evalint/audit-v1",
             "source": self.source,
@@ -130,6 +133,17 @@ def render(audit: Audit, palette: Palette, *, ascii_only: bool = False) -> str:
                 "repeat scores were averaged within each logical system; "
                 "they do not increase statistical independence",
                 "muted",
+            )
+        )
+    if matrix.density < 1.0:
+        expected = len(matrix) * len(matrix.systems)
+        rows.append(
+            "  "
+            + palette.paint(
+                f"coverage is {matrix.observations}/{expected} cells "
+                f"({matrix.density:.1%}); systems were scored on different "
+                "items, so their means and ranking are not directly comparable",
+                "warn",
             )
         )
     if audit.units_warning:
