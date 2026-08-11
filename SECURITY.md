@@ -68,6 +68,14 @@ bounded line/column error. They are not skipped or auto-repaired, because doing
 so could remove scored items or systems and leave a plausible subset report.
 Promptfoo JSON syntax errors use the same no-traceback boundary.
 
+Generic JSON/JSONL and CSV records fail closed when a required item or system
+identifier is missing, null, empty, or whitespace-only. EvalInt does not invent
+an identity from a row number and does not silently skip the record. Valid
+nonblank identifiers retain their exact spelling, so whitespace and alias
+variants can still remain distinct. This check does not authenticate names,
+prove that records are complete, or establish that two named systems are
+independent comparison targets.
+
 Human-readable reports and CLI error details encode imported identifiers,
 system names, source paths, and other untrusted labels before writing them to
 the terminal. Non-printable Unicode and control characters are emitted as

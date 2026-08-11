@@ -107,6 +107,26 @@ def _first(record: dict, keys) -> tuple[str, object] | None:
     return None
 
 
+def _required_identifier(
+    field: tuple[str, object] | None,
+    kind: str,
+    location: str,
+) -> str:
+    """Return one present, non-null, nonblank identifier without normalising it."""
+    if field is None:
+        raise ImportError_(
+            f"{location} has a missing {kind} identifier; every generic result "
+            "record must name both its item and system"
+        )
+    value = field[1]
+    if value is None:
+        raise ImportError_(f"{location} has a null {kind} identifier")
+    identifier = str(value)
+    if not identifier.strip():
+        raise ImportError_(f"{location} has a blank {kind} identifier")
+    return identifier
+
+
 def detect_format(text: str) -> str:
     """Name the shape of a results file: ``promptfoo``, ``openai-evals``,
     ``matrix``, ``jsonl``, ``csv``, or ``unknown``."""
@@ -435,28 +455,42 @@ def _read_records(text: str) -> Matrix:
     stripped = text.lstrip()
     if stripped.startswith("["):
         records = _json_document(text, "JSON array")
-    else:
-        records = [
-            _json_line(line, line_number, "JSONL")
-            for line_number, line in enumerate(text.splitlines(), start=1)
-            if line.strip()
+        if not isinstance(records, list):
+            raise ImportError_("invalid JSON array: the root must be an array")
+        locations = [
+            f"JSON array record {record_number}"
+            for record_number in range(1, len(records) + 1)
         ]
-    return _from_records([r for r in records if isinstance(r, dict)])
+    else:
+        records = []
+        locations = []
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
+            records.append(_json_line(line, line_number, "JSONL"))
+            locations.append(f"JSONL line {line_number}")
+    return _from_records(records, locations)
 
 
-def _from_records(records: list[dict]) -> Matrix:
+def _from_records(records: list[object], locations: list[str] | None = None) -> Matrix:
     """Long-form records: one row per (item, system) pair."""
     matrix = Matrix()
-    for record in records:
+    for record_number, record in enumerate(records, start=1):
+        location = (
+            locations[record_number - 1]
+            if locations is not None
+            else f"record {record_number}"
+        )
+        if not isinstance(record, dict):
+            raise ImportError_(f"{location} must be a JSON object")
         flat = _flatten(record)
         item_key = _first(flat, ITEM_KEYS)
         system_key = _first(flat, SYSTEM_KEYS)
         score_key = _first(flat, SCORE_KEYS)
-        if item_key is None or system_key is None:
-            continue
         text_key = _first(flat, TEXT_KEYS)
         expected_key = _first(flat, EXPECTED_KEYS)
-        item_id = str(item_key[1])
+        item_id = _required_identifier(item_key, "item", location)
+        system = _required_identifier(system_key, "system", location)
         matrix.add_item(
             Item(
                 id=item_id,
@@ -464,7 +498,6 @@ def _from_records(records: list[dict]) -> Matrix:
                 expected=str(expected_key[1]) if expected_key else "",
             )
         )
-        system = str(system_key[1])
         matrix.add_system(system)
         if score_key is None:
             continue
@@ -606,6 +639,7 @@ def _read_csv(text: str) -> Matrix:
             f"duplicate CSV header name: {displayed}; each column name must be unique"
         )
     rows: list[dict] = []
+    row_lines: list[int] = []
     try:
         for row in reader:
             extras = row.get(None)
@@ -618,6 +652,7 @@ def _read_csv(text: str) -> Matrix:
                 )
             if any((value or "").strip() for value in row.values()):
                 rows.append(row)
+                row_lines.append(reader.line_num)
     except csv.Error as exc:
         raise ImportError_(
             f"CSV syntax error near line {reader.line_num}: {exc}"
@@ -629,7 +664,8 @@ def _read_csv(text: str) -> Matrix:
     has_system = _first(dict.fromkeys(headers), SYSTEM_KEYS) is not None
     has_score = _first(dict.fromkeys(headers), SCORE_KEYS) is not None
     if has_system and has_score:
-        return _from_records(rows)
+        locations = [f"CSV row ending near line {line}" for line in row_lines]
+        return _from_records(rows, locations)
 
     # Wide: the first identifying column names the item, and every remaining
     # column that parses as a score is a system.
@@ -638,10 +674,12 @@ def _read_csv(text: str) -> Matrix:
     text_key = _first(dict.fromkeys(headers), TEXT_KEYS)
 
     matrix = Matrix()
-    for row in rows:
-        item_id = str(row.get(id_column, "")).strip()
-        if not item_id:
-            continue
+    for row, line in zip(rows, row_lines):
+        item_id = _required_identifier(
+            (id_column, row.get(id_column)),
+            "item",
+            f"CSV row ending near line {line}",
+        )
         matrix.add_item(
             Item(
                 id=item_id,
@@ -649,7 +687,14 @@ def _read_csv(text: str) -> Matrix:
             )
         )
         for column, value in row.items():
-            if not column or column == id_column:
+            if not column or not column.strip():
+                if _as_score(value) is not None:
+                    raise ImportError_(
+                        f"CSV row ending near line {line} has a blank system "
+                        "identifier above a score"
+                    )
+                continue
+            if column == id_column:
                 continue
             if text_key and column == text_key[0]:
                 continue

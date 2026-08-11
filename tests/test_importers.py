@@ -197,6 +197,99 @@ def test_a_late_malformed_jsonl_record_reports_its_line_and_column():
     assert "column" in message
 
 
+@pytest.mark.parametrize(
+    ("record", "problem"),
+    (
+        ({"system": "alpha", "score": 1}, "missing item identifier"),
+        ({"item_id": "   ", "system": "alpha", "score": 1}, "blank item identifier"),
+        ({"item_id": None, "system": "alpha", "score": 1}, "null item identifier"),
+        ({"item_id": "q1", "score": 1}, "missing system identifier"),
+        ({"item_id": "q1", "system": None, "score": 1}, "null system identifier"),
+        ({"item_id": "q1", "system": "   ", "score": 1}, "blank system identifier"),
+    ),
+)
+def test_generic_jsonl_refuses_missing_null_or_blank_identifiers(record, problem):
+    text = "\n".join(
+        (
+            '{"item_id":"q1","system":"alpha","score":1}',
+            json.dumps(record),
+            '{"item_id":"q1","system":"beta","score":0}',
+        )
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "jsonl")
+
+    message = str(caught.value)
+    assert "JSONL line 2" in message
+    assert problem in message
+
+
+def test_generic_json_array_refuses_a_non_object_record():
+    text = json.dumps(
+        [
+            {"item_id": "q1", "system": "alpha", "score": 1},
+            None,
+            {"item_id": "q1", "system": "beta", "score": 0},
+        ]
+    )
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "jsonl")
+
+    message = str(caught.value)
+    assert "JSON array record 2" in message
+    assert "object" in message
+
+
+def test_long_csv_refuses_a_blank_system_instead_of_inventing_one():
+    text = "item_id,system,score\nq1,,1\nq1,beta,0\n"
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "csv")
+
+    message = str(caught.value)
+    assert "CSV row ending near line 2" in message
+    assert "blank system identifier" in message
+
+
+def test_wide_csv_refuses_a_blank_item_instead_of_dropping_the_row():
+    text = "item_id,alpha,beta\n,1,0\nq1,0,1\n"
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "csv")
+
+    message = str(caught.value)
+    assert "CSV row ending near line 2" in message
+    assert "blank item identifier" in message
+
+
+@pytest.mark.parametrize("header", ("", "   "))
+def test_wide_csv_refuses_a_scored_column_with_a_blank_system_header(header):
+    text = f"item_id,{header},beta\nq1,1,0\nq2,0,1\n"
+
+    with pytest.raises(ImportError_) as caught:
+        parse_text(text, "csv")
+
+    message = str(caught.value)
+    assert "CSV row ending near line 2" in message
+    assert "blank system identifier" in message
+
+
+def test_nonblank_identifier_whitespace_is_preserved():
+    text = "\n".join(
+        (
+            '{"item_id":" q1 ","system":" alpha ","score":1}',
+            '{"item_id":" q1 ","system":" beta ","score":0}',
+        )
+    )
+
+    matrix, _ = parse_text(text, "jsonl")
+
+    assert matrix.item_ids == [" q1 "]
+    assert matrix.systems == [" alpha ", " beta "]
+
+
 def test_forced_promptfoo_reports_malformed_json_as_an_import_error():
     with pytest.raises(ImportError_) as caught:
         parse_text('{"results": [', "promptfoo")

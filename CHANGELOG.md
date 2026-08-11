@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16] - 2026-08-12
+
+### Fixed
+
+- Refuse generic JSON/JSONL and CSV records whose required item or system
+  identifier is missing, null, empty, or whitespace-only. Earlier releases
+  could silently skip the record, merge null ids under `"None"`, or rank an
+  anonymous CSV system while producing an ordinary exit-`0` report.
+- Refuse non-object generic JSON records, blank item ids in wide CSV, and
+  scored wide columns with blank system headers instead of discarding them
+  from a plausible subset.
+
+### Added
+
+- Report bounded JSONL line, JSON-array record, and CSV logical-row locations
+  without echoing the rejected row, and document validation alternatives plus
+  false-positive and false-negative limits.
+
 ## [0.2.15] - 2026-08-12
 
 ### Fixed
@@ -318,3 +336,4 @@ First release.
 [0.2.13]: https://github.com/CAOShurong/evalint/compare/v0.2.12...v0.2.13
 [0.2.14]: https://github.com/CAOShurong/evalint/compare/v0.2.13...v0.2.14
 [0.2.15]: https://github.com/CAOShurong/evalint/compare/v0.2.14...v0.2.15
+[0.2.16]: https://github.com/CAOShurong/evalint/compare/v0.2.15...v0.2.16
