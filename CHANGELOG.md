@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.30] - 2026-08-12
+
+### Added
+
+- Add `--promptfoo-metric NAME` and matching Python API keywords to audit one
+  current Promptfoo `namedScores` dimension instead of the top-level aggregate
+  score.
+- Record the selected metric in JSON output and the text-report source label so
+  saved audits remain self-describing.
+- Document a real Promptfoo 0.122.0 multi-metric reproduction, maintained
+  alternatives, migration cost, and upstream denominator/identity limits.
+
+### Fixed
+
+- Keep a selected named metric's absent row values missing rather than
+  inventing zeroes, so coverage exposes which cases actually contributed.
+- Refuse a metric selection for non-Promptfoo input, a wholly absent metric,
+  malformed `namedScores`, and nonnumeric selected values with bounded errors
+  that do not list other metric names or echo their values.
+- Preserve Promptfoo `failureReason=2` rows as missing measurements even if an
+  errored row carries a selected named score.
+
 ## [0.2.29] - 2026-08-12
 
 ### Fixed

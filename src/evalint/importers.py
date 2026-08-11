@@ -291,14 +291,21 @@ def _looks_like_csv(text: str) -> bool:
     return False
 
 
-def load(path: pathlib.Path, fmt: str = "auto") -> tuple[Matrix, str]:
+def load(
+    path: pathlib.Path,
+    fmt: str = "auto",
+    *,
+    promptfoo_metric: str | None = None,
+) -> tuple[Matrix, str]:
     """Read one results file. Returns the matrix and the format that was used."""
-    matrix, used = _parse_file(path, fmt)
+    matrix, used = _parse_file(path, fmt, promptfoo_metric)
     _require_comparable(matrix, [path])
     return matrix, used
 
 
-def load_many(paths, fmt: str = "auto") -> tuple[Matrix, str]:
+def load_many(
+    paths, fmt: str = "auto", *, promptfoo_metric: str | None = None
+) -> tuple[Matrix, str]:
     """Read several results files and merge them into one matrix.
 
     Needed because some formats hold exactly one run per file. An OpenAI evals
@@ -312,13 +319,13 @@ def load_many(paths, fmt: str = "auto") -> tuple[Matrix, str]:
     """
     paths = list(paths)
     if len(paths) == 1:
-        return load(paths[0], fmt)
+        return load(paths[0], fmt, promptfoo_metric=promptfoo_metric)
     _reject_duplicate_inputs(paths)
 
     parts: list[tuple[str, Matrix]] = []
     used_formats: list[str] = []
     for path in paths:
-        matrix, used = _parse_file(path, fmt)
+        matrix, used = _parse_file(path, fmt, promptfoo_metric)
         parts.append((str(path), matrix))
         used_formats.append(used)
     merged = merge(parts)
@@ -353,11 +360,13 @@ def _reject_duplicate_inputs(paths: list[pathlib.Path]) -> None:
         accepted[identity] = path
 
 
-def _parse_file(path: pathlib.Path, fmt: str) -> tuple[Matrix, str]:
+def _parse_file(
+    path: pathlib.Path, fmt: str, promptfoo_metric: str | None = None
+) -> tuple[Matrix, str]:
     """Parse one readable file while retaining its identity in diagnostics."""
     text = _read_file(path)
     try:
-        return parse_text(text, fmt)
+        return parse_text(text, fmt, promptfoo_metric=promptfoo_metric)
     except ImportError_ as exc:
         raise ImportError_(f"{path}: {exc}") from exc
 
@@ -370,7 +379,12 @@ def _format_summary(formats: list[str]) -> str:
     return f"mixed:{','.join(unique)}"
 
 
-def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
+def parse_text(
+    text: str,
+    fmt: str = "auto",
+    *,
+    promptfoo_metric: str | None = None,
+) -> tuple[Matrix, str]:
     """Turn one file's text into a matrix, without requiring it to be complete.
 
     Separate from :func:`load_text` because a single file is allowed to hold a
@@ -383,6 +397,11 @@ def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
         text = text[1:]
     if fmt == "auto":
         fmt = detect_format(text)
+    if promptfoo_metric is not None:
+        if not isinstance(promptfoo_metric, str) or not promptfoo_metric.strip():
+            raise ImportError_("Promptfoo metric name must be a nonblank string")
+        if fmt != "promptfoo":
+            raise ImportError_("--promptfoo-metric requires Promptfoo input")
     reader = READERS.get(fmt)
     if reader is None:
         raise ImportError_(
@@ -390,7 +409,11 @@ def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
             f"say what it is (one of: {', '.join(sorted(READERS))})"
         )
     try:
-        matrix = reader(text)
+        matrix = (
+            _read_promptfoo(text, promptfoo_metric)
+            if fmt == "promptfoo"
+            else reader(text)
+        )
     except (ConflictingItem, InvalidScore) as exc:
         raise ImportError_(str(exc)) from exc
     if not matrix.items:
@@ -398,9 +421,14 @@ def parse_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
     return matrix, fmt
 
 
-def load_text(text: str, fmt: str = "auto") -> tuple[Matrix, str]:
+def load_text(
+    text: str,
+    fmt: str = "auto",
+    *,
+    promptfoo_metric: str | None = None,
+) -> tuple[Matrix, str]:
     """Read results from a string. The text must be complete on its own."""
-    matrix, used = parse_text(text, fmt)
+    matrix, used = parse_text(text, fmt, promptfoo_metric=promptfoo_metric)
     _require_comparable(matrix, None)
     return matrix, used
 
@@ -715,7 +743,7 @@ def _promptfoo_vars_item_id(
     return f"promptfoo:{identity}"
 
 
-def _read_promptfoo(text: str) -> Matrix:
+def _read_promptfoo(text: str, promptfoo_metric: str | None = None) -> Matrix:
     """Promptfoo eval JSON envelopes and current per-result JSONL exports."""
     locations: list[str] | None = None
     if _starts_with_promptfoo_jsonl_result(text):
@@ -746,6 +774,7 @@ def _read_promptfoo(text: str) -> Matrix:
                 )
 
     duplicate_vars = _promptfoo_duplicate_vars(results)
+    metric_found = False
     matrix = Matrix()
     for entry_number, entry in enumerate(results, start=1):
         location = (
@@ -787,6 +816,20 @@ def _read_promptfoo(text: str) -> Matrix:
         system = _promptfoo_system_id(str(system), entry, location)
         matrix.add_item(Item(id=str(item_id), text=prompt_text))
         matrix.add_system(system)
+        metric_score = None
+        if promptfoo_metric is not None:
+            named_scores = entry.get("namedScores")
+            if named_scores is not None and not isinstance(named_scores, dict):
+                raise ImportError_(f"{location} has invalid namedScores")
+            if isinstance(named_scores, dict) and promptfoo_metric in named_scores:
+                metric_found = True
+                metric_score = named_scores[promptfoo_metric]
+                if isinstance(metric_score, bool) or not isinstance(
+                    metric_score, (int, float)
+                ):
+                    raise ImportError_(
+                        f"{location} has an invalid selected Promptfoo metric score"
+                    )
         if "failureReason" in entry:
             failure_reason = entry["failureReason"]
             if (
@@ -800,13 +843,18 @@ def _read_promptfoo(text: str) -> Matrix:
                 # failed assertions. Its synthetic score=0 is not an observed
                 # answer-quality measurement.
                 continue
-        score = entry.get("score")
-        if score is None:
-            score = entry.get("success")
-        score = _as_score(score)
+        if promptfoo_metric is not None:
+            score = None if metric_score is None else float(metric_score)
+        else:
+            score = entry.get("score")
+            if score is None:
+                score = entry.get("success")
+            score = _as_score(score)
         if score is None:
             continue
         matrix.record(str(item_id), system, score)
+    if promptfoo_metric is not None and not metric_found:
+        raise ImportError_("selected Promptfoo metric was not found in any result")
     return matrix
 
 

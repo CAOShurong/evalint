@@ -107,6 +107,30 @@ def _promptfoo_same_vars_distinct_tests() -> str:
     return "\n".join(json.dumps(record) for record in records) + "\n"
 
 
+def _promptfoo_named_metrics() -> str:
+    records = []
+    for test_idx in range(2):
+        for label, named_scores in (
+            ("accuracy-provider", {"Accuracy": 1, "Safety": 0}),
+            ("safety-provider", {"Accuracy": 0, "Safety": 1}),
+        ):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {"vars": {"case": f"q{test_idx + 1}"}},
+                    "promptId": "prompt-a",
+                    "provider": {"id": "local:same-id", "label": label},
+                    "prompt": {"raw": "untrusted rendered prompt"},
+                    "success": False,
+                    "score": 0.5,
+                    "namedScores": named_scores,
+                    "failureReason": 1,
+                }
+            )
+    return "\n".join(json.dumps(record) for record in records) + "\n"
+
+
 def test_a_healthy_file_exits_zero(tmp_path, capsys):
     assert main([str(_write(tmp_path, HEALTHY))]) == 0
     assert "evalint" in capsys.readouterr().out
@@ -187,6 +211,78 @@ def test_promptfoo_same_vars_test_cases_remain_distinct_through_the_cli(
     assert "contract" not in captured.out
     assert "private" not in captured.out
     assert "untrusted" not in captured.out
+    assert captured.err == ""
+
+
+def test_promptfoo_named_metric_runs_through_the_real_cli(tmp_path, capsys):
+    path = _write(tmp_path, _promptfoo_named_metrics(), "named-metrics.jsonl")
+
+    assert main([str(path), "--promptfoo-metric", "Accuracy", "--json"]) == 0
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["promptfoo_metric"] == "Accuracy"
+    assert report["summary"]["items"] == 2
+    assert report["summary"]["observations"] == 4
+    assert report["summary"]["informative"] == 2
+    assert sorted(entry["mean"] for entry in report["ranking"]) == [0, 1]
+    assert "Safety" not in captured.out
+    assert "untrusted" not in captured.out
+    assert captured.err == ""
+
+
+def test_promptfoo_metric_is_refused_for_another_input_format(tmp_path, capsys):
+    path = _write(tmp_path, HEALTHY)
+
+    assert main([str(path), "--promptfoo-metric", "Accuracy", "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "requires Promptfoo input" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_missing_promptfoo_metric_exits_one_without_listing_available_names(
+    tmp_path, capsys
+):
+    path = _write(tmp_path, _promptfoo_named_metrics(), "named-metrics.jsonl")
+
+    assert main([str(path), "--promptfoo-metric", "Missing", "--json"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "selected Promptfoo metric was not found" in captured.err
+    assert "Accuracy" not in captured.err
+    assert "Safety" not in captured.err
+    assert "Missing" not in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_promptfoo_metric_name_is_escaped_in_the_text_report(tmp_path, capsys):
+    metric = "Accuracy\x1b[31m"
+    records = []
+    for test_idx in range(2):
+        for provider, score in (("alpha", 1), ("beta", 0)):
+            records.append(
+                {
+                    "testIdx": test_idx,
+                    "promptIdx": 0,
+                    "testCase": {"vars": {"case": f"q{test_idx + 1}"}},
+                    "promptId": "prompt-a",
+                    "provider": {"id": provider},
+                    "success": bool(score),
+                    "score": score,
+                    "namedScores": {metric: score},
+                    "failureReason": 0 if score else 1,
+                }
+            )
+    path = _write(
+        tmp_path,
+        "\n".join(json.dumps(record) for record in records),
+        "control-metric.jsonl",
+    )
+
+    assert main([str(path), "--promptfoo-metric", metric, "--color", "never"]) == 0
+    captured = capsys.readouterr()
+    assert "\x1b" not in captured.out
+    assert "\\x1b" in captured.out
     assert captured.err == ""
 
 
@@ -766,7 +862,7 @@ def test_input_system_cannot_inject_terminal_controls(tmp_path, capsys):
 def test_import_error_controls_are_visible_text_not_terminal_commands(
     tmp_path, capsys, monkeypatch
 ):
-    def fail_import(_paths, _format):
+    def fail_import(_paths, _format, **_kwargs):
         raise cli_module.ImportError_("bad\x1b[2J\nFORGED-ERROR")
 
     monkeypatch.setattr(cli_module, "load_many", fail_import)
