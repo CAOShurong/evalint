@@ -149,6 +149,12 @@ record exits `1` with its line and column instead of being skipped or leaking a
 Python traceback. EvalInt never repairs a partial score record and then reports
 on the survivors; see [`docs/MALFORMED_JSON.md`](docs/MALFORMED_JSON.md).
 
+JSON that exceeds Python's safe nesting boundary exits `1` with a bounded
+message and no traceback across automatic detection and every JSON reader.
+EvalInt does not raise the interpreter's recursion limit or claim that a clean
+parse bounds file size, CPU, or memory use; see
+[`docs/DEEP_JSON.md`](docs/DEEP_JSON.md).
+
 Every JSON object must also use each exact member name at most once. Repeating
 `schema`, `score`, or another name fails before the later value can silently
 replace the earlier one. The same field names remain valid in separate objects;
