@@ -63,9 +63,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "paths",
         type=pathlib.Path,
-        nargs="+",
+        nargs="*",
         metavar="FILE",
         help="eval results to audit; several files are merged on the item id",
+    )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="audit the bundled example set (no input file required)",
     )
     parser.add_argument(
         "--format",
@@ -144,6 +149,17 @@ def main(argv: list[str] | None = None) -> int:
     _use_utf8(sys.stdout)
     _use_utf8(sys.stderr)
 
+    if args.demo:
+        if args.paths:
+            parser.error("--demo does not take a results file")
+        try:
+            args.paths = [_bundled_example()]
+        except FileNotFoundError as exc:
+            _print_error(exc)
+            return 1
+    elif not args.paths:
+        parser.error("a results file is required (or pass --demo)")
+
     if args.save_reduced is None and args.save_reduced_format != "lines":
         parser.error("--save-reduced-format requires --save-reduced")
 
@@ -202,6 +218,21 @@ def main(argv: list[str] | None = None) -> int:
         print(render(audit, palette, ascii_only=args.ascii))
 
     return _exit_code(audit, args.fail_under)
+
+
+def _bundled_example() -> pathlib.Path:
+    """The planted 240-item example, from the wheel or an editable checkout."""
+    here = pathlib.Path(__file__).resolve().parent
+    candidates = (
+        here / "example-results.csv",
+        here.parents[1] / "docs" / "example-results.csv",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "bundled example-results.csv is missing; pass a results file instead"
+    )
 
 
 def _source_name(paths: list[pathlib.Path]) -> str:

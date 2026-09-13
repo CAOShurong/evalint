@@ -152,6 +152,8 @@ def test_utf8_bom_before_the_first_header_is_accepted(tmp_path):
     assert fmt == "csv"
     assert matrix.item_ids == ["q1"]
     assert matrix.systems == ["alpha", "beta"]
+    again, _ = load(str(path))
+    assert again.item_ids == ["q1"]
 
 
 def test_invalid_utf8_is_refused_instead_of_replacing_identifiers(tmp_path):

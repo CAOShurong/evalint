@@ -131,6 +131,18 @@ def _promptfoo_named_metrics() -> str:
     return "\n".join(json.dumps(record) for record in records) + "\n"
 
 
+def test_demo_runs_the_bundled_example(capsys):
+    assert main(["--demo", "--color", "never"]) == 0
+    out = capsys.readouterr().out.lower()
+    assert "reliability" in out
+
+
+def test_demo_refuses_an_extra_file(tmp_path):
+    path = _write(tmp_path, HEALTHY)
+    with pytest.raises(SystemExit):
+        main(["--demo", str(path)])
+
+
 def test_a_healthy_file_exits_zero(tmp_path, capsys):
     assert main([str(_write(tmp_path, HEALTHY))]) == 0
     assert "evalint" in capsys.readouterr().out

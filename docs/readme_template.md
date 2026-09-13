@@ -28,11 +28,8 @@ log, and it has zero runtime dependencies.
 ## Install
 
 ```bash
-pip install evalint
-```
-
-```bash
-evalint results.csv
+uvx evalint --demo            # the planted 240-item example, nothing installed
+evalint results.csv           # your own CSV, JSONL, promptfoo dump, or evals log
 ```
 
 Python 3.9+. The only requirement is that the file compares **at least two

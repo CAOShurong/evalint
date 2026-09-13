@@ -5,9 +5,9 @@ cases are any good. This does: what the set can actually measure, which items
 cannot affect the answer, which ones look broken, and how many you could stop
 paying for without changing the ranking.
 
-    from evalint import audit_matrix, load_text
+    from evalint import audit_matrix, load
 
-    matrix, _ = load_text(open("results.csv").read())
+    matrix, _ = load("results.csv")
     audit = audit_matrix(matrix)
     print(audit.summary.reliability, audit.summary.reliability_verdict)
     for stat in audit.broken():

@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `evalint --demo` audits the bundled 240-item example so `uvx evalint --demo`
+  is a real one-command run, with no `results.csv` to invent first.
+
+### Fixed
+
+- `load()` accepts a string path. The advertised `load_text(open("results.csv").read())`
+  used the process default encoding, which on Windows is not UTF-8.
+
 ## [0.2.30] - 2026-08-12
 
 ### Added

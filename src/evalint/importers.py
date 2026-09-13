@@ -292,12 +292,13 @@ def _looks_like_csv(text: str) -> bool:
 
 
 def load(
-    path: pathlib.Path,
+    path: pathlib.Path | str,
     fmt: str = "auto",
     *,
     promptfoo_metric: str | None = None,
 ) -> tuple[Matrix, str]:
     """Read one results file. Returns the matrix and the format that was used."""
+    path = pathlib.Path(path)
     matrix, used = _parse_file(path, fmt, promptfoo_metric)
     _require_comparable(matrix, [path])
     return matrix, used
@@ -317,7 +318,7 @@ def load_many(
     Item ids are assumed to mean the same thing across files, which is the
     point: the same eval set, run by different systems.
     """
-    paths = list(paths)
+    paths = [pathlib.Path(path) for path in paths]
     if len(paths) == 1:
         return load(paths[0], fmt, promptfoo_metric=promptfoo_metric)
     _reject_duplicate_inputs(paths)

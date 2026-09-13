@@ -58,6 +58,9 @@ dev = ["pytest>=7", "ruff>=0.6"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/evalint"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"docs/example-results.csv" = "evalint/example-results.csv"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "src",
